@@ -3,50 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LUXE EMPIRE | Digital Territory Master</title>
+    <title>LUXE EMPIRE | Digital Territory</title>
     <style>
-        body {
-            background-color: #0a0a0a; /* 짙은 블랙 */
-            color: #d4af37; /* 황금색 */
-            font-family: 'Pretendard', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            text-align: center;
-        }
-        .container {
-            border: 2px solid #d4af37;
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 0 30px rgba(212, 175, 55, 0.2);
-        }
-        h1 {
-            font-size: 3rem;
-            letter-spacing: 5px;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-        p {
-            font-size: 1.2rem;
-            color: #ffffff;
-            opacity: 0.8;
-        }
-        .partnership {
-            margin-top: 30px;
-            font-weight: bold;
-        }
+        body { background-color: #050505; color: #d4af37; font-family: 'Pretendard', sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        .header { padding: 50px 20px; text-align: center; border-bottom: 1px solid #d4af37; width: 100%; }
+        h1 { font-size: 2.5rem; letter-spacing: 7px; margin: 0; }
+        .partners { color: #ffffff; font-size: 1rem; margin-top: 15px; opacity: 0.8; }
+        .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 20px; width: 90%; max-width: 500px; }
+        .menu-card { border: 1px solid #d4af37; padding: 20px; border-radius: 10px; text-align: center; background: rgba(212, 175, 55, 0.05); transition: 0.3s; cursor: pointer; }
+        .menu-card:active { background: #d4af37; color: #000; }
+        .menu-card h3 { font-size: 0.9rem; margin: 0; }
+        .footer { margin-top: 30px; padding: 20px; font-size: 0.8rem; color: #666; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="header">
         <h1>LUXE EMPIRE</h1>
-        <p>Digital Territory Master: Lee Ha-ung</p>
-        <div class="partnership">
-            Business Partner: Chairman Park Hyun-soon
-        </div>
+        <div class="partners">Master: 이하웅 | Partner: 박현순 회장</div>
     </div>
+
+    <div class="grid-container">
+        <div class="menu-card"><h3>가구 인벤토리</h3></div>
+        <div class="menu-card"><h3>수입 제조 공사</h3></div>
+        <div class="menu-card"><h3>명품 브랜드 큐레이션</h3></div>
+        <div class="menu-card"><h3>디지털 자산 관리</h3></div>
+        <div class="menu-card"><h3>바스 엑스포 전시</h3></div>
+        <div class="menu-card"><h3>인테르니 앤 데코</h3></div>
+        <div class="menu-card"><h3>VIP 컨시어지</h3></div>
+        <div class="menu-card"><h3>Luxe ERP 시스템</h3></div>
+    </div>
+
+    <div class="footer">© 2026 LUXE EMPIRE. Digital Territory Master Lee Ha-ung.</div>
 </body>
 </html>
