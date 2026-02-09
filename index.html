@@ -3,64 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LUXE EMPIRE | Digital Territory</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;700&family=Noto+Sans+KR:wght@100;400;700&display=swap" rel="stylesheet">
+    <title>LUXE EMPIRE | MASTER V37</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <style>
-        :root { --gold: #c5a059; --dark-bg: #050505; --card-bg: #111111; }
-        body { background-color: var(--dark-bg); color: #ffffff; font-family: 'Noto Sans KR', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        body { background-color: #000; color: #fff; font-family: 'Outfit', sans-serif; -webkit-font-smoothing: antialiased; }
+        .gold-text { color: #D4AF37; }
+        .gold-bg { background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%); }
+        .glass { background: rgba(10, 10, 10, 0.98); backdrop-filter: blur(25px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .nav-item.active { color: #D4AF37; border-bottom: 2px solid #D4AF37; }
         
-        /* 로딩 애니메이션 및 헤더 */
-        .header { padding: 80px 20px 40px; text-align: center; background: linear-gradient(to bottom, #1a1a1a, var(--dark-bg)); }
-        .logo { font-family: 'Noto Serif KR', serif; font-size: 2.8rem; font-weight: 700; color: var(--gold); letter-spacing: 12px; margin: 0; text-shadow: 0 4px 15px rgba(197, 160, 89, 0.3); }
-        .sub-title { font-size: 0.85rem; letter-spacing: 4px; margin-top: 15px; color: #888; font-weight: 100; }
+        /* 대시보드: 화보 높이 축소 및 장바구니 노출 */
+        .panorama-compact { position: relative; width: 100%; height: 40vh; border-radius: 2.5rem; overflow: hidden; border: 1px solid #1a1a1a; }
+        .panorama-slide { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.5s ease-in-out; }
+        .panorama-slide.active { opacity: 0.5; }
+        
+        /* 장바구니 존 */
+        .cart-zone { background: #080808; border: 1px solid #1a1a1a; border-radius: 2rem; padding: 25px; margin-top: 20px; }
 
-        /* 마스터 정보 섹션 */
-        .master-info { padding: 20px; text-align: center; border-top: 1px solid rgba(197, 160, 89, 0.2); border-bottom: 1px solid rgba(197, 160, 89, 0.2); background: rgba(197, 160, 89, 0.03); margin-bottom: 30px; }
-        .master-info strong { color: var(--gold); font-size: 1.1rem; }
-        .master-info span { margin: 0 10px; color: #444; }
+        /* 갤러리 섹터 필터 복구 */
+        .sector-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 15px; position: sticky; top: 135px; background: #000; z-index: 50; }
+        .sector-btn { padding: 8px 20px; border-radius: 20px; border: 1px solid #222; font-size: 10px; font-weight: 800; white-space: nowrap; transition: 0.3s; color: #555; }
+        .sector-btn.active { background: #D4AF37; color: #000; border-color: #D4AF37; }
 
-        /* 카탈로그 그리드 시스템 */
-        .grid-wrapper { padding: 0 20px 60px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 600px; margin: 0 auto; }
-        .item-card { background: var(--card-bg); border: 1px solid #222; border-radius: 4px; padding: 30px 15px; text-align: center; transition: all 0.4s ease; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; height: 120px; }
-        .item-card::after { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--gold); opacity: 0; transition: 0.3s; }
-        .item-card:active { background: #1a1a1a; border-color: var(--gold); transform: translateY(-5px); }
-        .item-card:active::after { opacity: 1; }
-        .item-card h3 { font-size: 0.95rem; font-weight: 400; color: #eee; margin: 0; letter-spacing: 1px; line-height: 1.5; }
-        .item-card .num { font-size: 0.7rem; color: var(--gold); margin-bottom: 10px; font-family: serif; display: block; }
+        /* 갤러리: 50% 축소 그리드 */
+        .compact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        @media (min-width: 1024px) { .compact-grid { grid-template-columns: repeat(6, 1fr); } }
 
-        /* 하단 푸터 및 연락처 */
-        .contact-section { padding: 40px 20px; text-align: center; background: #0a0a0a; }
-        .btn-call { display: inline-block; padding: 18px 40px; border: 1px solid var(--gold); color: var(--gold); text-decoration: none; border-radius: 2px; font-size: 0.9rem; letter-spacing: 2px; transition: 0.3s; }
-        .btn-call:active { background: var(--gold); color: #000; }
-        .footer-text { margin-top: 50px; font-size: 0.7rem; color: #444; line-height: 2; letter-spacing: 1px; }
+        /* 라이브러리: 전 단계 그리드 복구 */
+        .lib-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        @media (min-width: 768px) { .lib-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media (min-width: 1200px) { .lib-grid { grid-template-columns: repeat(8, 1fr); } }
+
+        /* 상세 페이지 모달 */
+        .modal-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.98); display: flex; justify-content: center; overflow-y: auto; padding: 20px; }
+        .modal-card { width: 100%; max-width: 1100px; background: #000; border: 1px solid #1a1a1a; border-radius: 2.5rem; padding: 40px; display: flex; flex-direction: column; lg:flex-row; gap: 40px; align-items: flex-start; }
     </style>
 </head>
 <body>
-    <header class="header">
-        <h1 class="logo">LUXE EMPIRE</h1>
-        <p class="sub-title">HIGH-END INTERIOR ECOSYSTEM</p>
-    </header>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const DB_NAME = 'LuxeMasterDB_V5';
+        const STORE_KEY = 'appDataV5';
 
-    <section class="master-info">
-        <strong>Master 이하웅</strong> <span>|</span> <strong>Partner 박현순 회장</strong>
-    </section>
+        const idb = {
+            get: (key) => new Promise((resolve) => {
+                const req = indexedDB.open(DB_NAME);
+                req.onsuccess = () => {
+                    const db = req.result;
+                    const tx = db.transaction(STORE_KEY, 'readonly');
+                    tx.objectStore(STORE_KEY).get(key).onsuccess = (e) => resolve(e.target.result);
+                };
+            })
+        };
 
-    <main class="grid-wrapper">
-        <div class="item-card"><span class="num">INV 01</span><h3>가구<br>인벤토리</h3></div>
-        <div class="item-card"><span class="num">INV 02</span><h3>수입 제조<br>및 공사</h3></div>
-        <div class="item-card"><span class="num">INV 03</span><h3>바스 엑스포<br>전시관</h3></div>
-        <div class="item-card"><span class="num">INV 04</span><h3>인테르니 앤 데코<br>미디어</h3></div>
-        <div class="item-card"><span class="num">INV 05</span><h3>Luxe ERP<br>시스템</h3></div>
-        <div class="item-card"><span class="num">INV 06</span><h3>디지털 영토<br>마스터 컨설팅</h3></div>
-        <div class="item-card" style="grid-column: span 2; height: 80px;"><span class="num">INV 07</span><h3>VIP 전용 컨시어지</h3></div>
-    </main>
+        const App = () => {
+            const [isReady, setIsReady] = useState(false);
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [dbData, setDbData] = useState({ assets: [], news: [], gallery: [], config: {} });
+            const [slideIdx, setSlideIdx] = useState(0);
+            const [activeSector, setActiveSector] = useState('ALL');
+            const [cart, setCart] = useState([]);
+            const [selectedItem, setSelectedItem] = useState(null);
+            const [currentNews, setCurrentNews] = useState(null);
+            const [zoomImage, setZoomImage] = useState(null);
 
-    <section class="contact-section">
-        <a href="tel:010-0000-0000" class="btn-call">MASTER DIRECT LINE</a>
-        <div class="footer-text">
-            본 플랫폼은 마스터 이하웅의 디지털 영토 내 자산을 관리합니다.<br>
-            © 2026 LUXE EMPIRE. ALL RIGHTS RESERVED.
-        </div>
-    </section>
+            useEffect(() => {
+                const sync = async () => {
+                    const [assets, news, gallery, config] = await Promise.all([
+                        idb.get('luxe_assets_v5'), idb.get('luxe_news_v5'),
+                        idb.get('luxe_gallery_v5'), idb.get('luxe_config_v5')
+                    ]);
+                    setDbData({ assets: assets || [], news: news || [], gallery: gallery || [], config: config || {} });
+                    setIsReady(true);
+                };
+                sync();
+            }, []);
+
+            const panoramaImages = useMemo(() => dbData.gallery.flatMap(g => g.images || []).slice(0, 10), [dbData.gallery]);
+            useEffect(() => {
+                if (activeTab === 'dashboard' && panoramaImages.length > 1) {
+                    const timer = setInterval(() => setSlideIdx(p => (p + 1) % panoramaImages.length), 5000);
+                    return () => clearInterval(timer);
+                }
+            }, [activeTab, panoramaImages]);
+
+            const sectors = useMemo(() => ['ALL', ...dbData.gallery.map(g => g.title)], [dbData.gallery]);
+            const filteredGallery = useMemo(() => {
+                if (activeSector === 'ALL') return dbData.gallery.flatMap(g => (g.images || []));
+                const target = dbData.gallery.find(g => g.title === activeSector);
+                return target ? (target.images || []) : [];
+            }, [dbData.gallery, activeSector]);
+
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [activeTab, isReady, cart, activeSector, currentNews]);
+
+            if (!isReady) return <div className="h-screen bg-black flex items-center justify-center text-[#D4AF37] font-black animate-pulse">LUXE EMPIRE</div>;
+
+            return (
+                <div className="w-full min-h-screen bg-black flex flex-col no-scrollbar">
+                    <header className="glass sticky top-0 z-[100] p-10 pb-6 text-center">
+                        <h1 className="text-3xl font-black italic gold-text tracking-[0.3em] mb-10 uppercase">{dbData.config.title || "LUXE EMPIRE"}</h1>
+                        <nav className="max-w-5xl mx-auto flex justify-around border-b border-zinc-900">
+                            {['dashboard', 'news', 'library', 'gallery'].map(tab => (
+                                <button key={tab} onClick={() => { setActiveTab(tab); setCurrentNews(null); }} className={`text-[11px] font-black uppercase tracking-[0.25em] pb-5 transition-all ${activeTab === tab ? 'nav-item active' : 'text-zinc-600'}`}>{tab}</button>
+                            ))}
+                        </nav>
+                    </header>
+
+                    <main className="flex-1 w-full max-w-[1700px] mx-auto p-10 pb-32">
+                        {/* 1. Dashboard: 높이 조절 및 장바구니 */}
+                        {activeTab === 'dashboard' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in">
+                                <div className="lg:col-span-8">
+                                    <div className="panorama-compact">
+                                        {panoramaImages.map((img, i) => (
+                                            <img key={i} src={img} className={`panorama-slide ${i === slideIdx ? 'active' : ''}`} />
+                                        ))}
+                                        <div className="absolute bottom-10 left-10 z-10 font-black italic gold-text text-3xl uppercase tracking-tighter">Master Empire</div>
+                                    </div>
+                                    <div className="cart-zone">
+                                        <h3 className="gold-text font-black uppercase italic tracking-widest mb-6 flex items-center gap-2 text-sm"><i data-lucide="shopping-bag" className="w-5 h-5"></i> Inquiry Bag ({cart.length})</h3>
+                                        <div className="space-y-2">
+                                            {cart.map(item => (
+                                                <div key={item.id} className="flex justify-between items-center text-[11px] border-b border-zinc-900 pb-2">
+                                                    <span className="font-bold">{item.brand} / {item.name}</span>
+                                                    <button onClick={() => setCart(cart.filter(i => i.id !== item.id))} className="text-red-900 font-black uppercase">Del</button>
+                                                </div>
+                                            ))}
+                                            {cart.length > 0 && <button onClick={() => window.location.href=`sms:?body=[문의] ${cart.map(i=>i.name).join(',')}`} className="w-full py-4 gold-bg text-black font-black rounded-full uppercase text-[10px] mt-4">상담 신청 전송</button>}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="lg:col-span-4 bg-[#080808] p-10 rounded-[2.5rem] border border-zinc-900 flex flex-col justify-center items-center text-center">
+                                    <p className="text-xs text-zinc-600 font-bold uppercase mb-4 tracking-widest">Asset Valuation</p>
+                                    <p className="text-4xl font-black italic gold-text tracking-tighter leading-none">₩ {dbData.assets.reduce((s,a)=>s+(Number(a.price||0)*Number(a.stock||0)),0).toLocaleString()}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 2. News: 인덱스 방식 복구 */}
+                        {activeTab === 'news' && (
+                            <div className="max-w-3xl mx-auto">
+                                {!currentNews ? (
+                                    <div className="space-y-1">
+                                        {dbData.news.map((n, idx) => (
+                                            <div key={n.id} className="p-8 border-b border-zinc-900 flex items-center gap-6 cursor-pointer hover:gold-text" onClick={() => setCurrentNews(n)}>
+                                                <span className="font-black italic gold-text opacity-40">{(idx+1).toString().padStart(2,'0')}</span>
+                                                <h5 className="text-lg font-bold uppercase tracking-widest">{n.title}</h5>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="animate-in fade-in">
+                                        <button onClick={() => setCurrentNews(null)} className="mb-10 gold-text text-[10px] font-black uppercase tracking-widest flex items-center gap-2">← Index</button>
+                                        <h3 className="text-4xl font-black gold-text uppercase mb-12 leading-tight">{currentNews.title}</h3>
+                                        <div className="text-zinc-400 text-lg leading-loose font-light mb-16" dangerouslySetInnerHTML={{ __html: currentNews.content?.replace(/<img[^>]*>/g, "") }}></div>
+                                        <div className="space-y-8">
+                                            {currentNews.content?.match(/src="([^"]*)"/g)?.map((src, i) => (
+                                                <img key={i} src={src.replace('src="', '').replace('"', '')} className="w-full rounded-2xl" onClick={() => setZoomImage(src.replace('src="', '').replace('"', ''))} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* 3. Library: 전 단계 그리드 복구 */}
+                        {activeTab === 'library' && (
+                            <div className="lib-grid">
+                                {dbData.assets.map((a, i) => (
+                                    <div key={i} className="aspect-square bg-zinc-900 rounded-xl overflow-hidden border border-zinc-800 cursor-pointer p-4 group" onClick={() => setSelectedItem(a)}>
+                                        <img src={a.images?.[0]} className="w-full h-full object-contain group-hover:scale-110 transition-transform" />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* 4. Gallery: 카테고리 복구 & 50% 축소 */}
+                        {activeTab === 'gallery' && (
+                            <div className="space-y-10">
+                                <div className="sector-scroll no-scrollbar">
+                                    {sectors.map(sec => (
+                                        <button key={sec} onClick={() => setActiveSector(sec)} className={`sector-btn ${activeSector === sec ? 'active' : ''}`}>{sec}</button>
+                                    ))}
+                                </div>
+                                <div className="compact-grid">
+                                    {filteredGallery.map((src, i) => (
+                                        <div key={i} className="aspect-square bg-zinc-950 rounded-xl overflow-hidden border border-zinc-900 cursor-pointer" onClick={() => setZoomImage(src)}>
+                                            <img src={src} className="w-full h-full object-cover opacity-60 hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* 상세 페이지 모달 */}
+                    {selectedItem && (
+                        <div className="modal-overlay" onClick={() => setSelectedItem(null)}>
+                            <div className="modal-card" onClick={e => e.stopPropagation()}>
+                                <div className="w-full lg:w-1/2 flex items-start"><img src={selectedItem.images?.[0]} className="w-full rounded-2xl object-contain bg-zinc-950" /></div>
+                                <div className="flex-1 space-y-10">
+                                    <div>
+                                        <p className="gold-text font-black text-xs tracking-widest mb-4 uppercase">{selectedItem.brand}</p>
+                                        <h2 className="text-5xl font-black italic gold-text leading-tight uppercase mb-6">{selectedItem.name}</h2>
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <span className="border border-[#D4AF37] text-[#D4AF37] px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest">STOCK: {selectedItem.stock}</span>
+                                            <button onClick={() => { setCart([...cart, selectedItem]); setSelectedItem(null); }} className="bg-zinc-900 text-[#D4AF37] border border-[#D4AF37]/30 px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-zinc-800">Add to Bag</button>
+                                        </div>
+                                        <p className="text-2xl font-light italic">₩ {Number(selectedItem.price).toLocaleString()}</p>
+                                    </div>
+                                    <div className="text-zinc-500 text-base leading-relaxed font-light" dangerouslySetInnerHTML={{ __html: selectedItem.description || selectedItem.content }}></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 이미지 풀 확대 모달 */}
+                    {zoomImage && (
+                        <div className="fixed inset-0 z-[2000] bg-black/98 flex items-center justify-center" onClick={() => setZoomImage(null)}>
+                            <img src={zoomImage} className="w-full h-full object-contain animate-in zoom-in" />
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
