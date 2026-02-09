@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luxe Master Premium Admin V5.0</title>
+
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Icons & Fonts -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+
+    <!-- Editors -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .glass-panel {
+            background: rgba(18, 18, 18, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .gold-gradient-text {
+            background: linear-gradient(135deg, #FFD700 0%, #D4AF37 50%, #B8860B 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .gold-btn {
+            background: linear-gradient(135deg, #D4AF37 0%, #C5A028 100%);
+            color: #000;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            transition: all 0.3s ease;
+        }
+
+        .gold-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(212, 175, 55, 0.3);
+        }
+
+        .admin-input {
+            background: #0A0A0A;
+            border: 1px solid #222;
+            color: #E0E0E0;
+            padding: 16px;
+            border-radius: 14px;
+            width: 100%;
+            font-size: 14px;
+            outline: none;
+            transition: 0.3s;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .admin-input:focus {
+            border-color: #D4AF37;
+            box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.1);
+        }
+
+        .nav-item {
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            color: #666;
+            transition: all 0.2s;
+            cursor: pointer;
+            letter-spacing: 0.02em;
+        }
+
+        .nav-item:hover {
+            color: #D4AF37;
+            background: rgba(212, 175, 55, 0.03);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(90deg, rgba(212, 175, 55, 0.1) 0%, transparent 100%);
+            color: #D4AF37;
+            border-left: 3px solid #D4AF37;
+        }
+
+        .full-screen-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: black;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .animation-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .ql-editor img {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            border-radius: 12px;
+            margin: 24px 0;
+            display: block;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .ql-editor {
+            padding: 0 !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect, useRef, useCallback } = React;
+        const DEFAULT_SLIDES = ["https://images.unsplash.com/photo-1600607686527-6fb886090705?w=1600&q=80", "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1600&q=80"];
+
+        // --- IDB V5 HARD RESET ---
+        const DB_NAME = 'LuxeMasterDB_V5';
+        const STORE_KEY = 'appDataV5';
+        const DB_VERSION = 2;
+
+        const idb = {
+            open: () => new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_KEY)) db.createObjectStore(STORE_KEY);
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            }),
+            put: async (key, val) => {
+                const db = await idb.open();
+                return new Promise((res, rej) => {
+                    const tx = db.transaction(STORE_KEY, 'readwrite');
+                    tx.objectStore(STORE_KEY).put(val, key).onsuccess = () => res();
+                    tx.onerror = () => rej();
+                });
+            },
+            get: async (key) => {
+                const db = await idb.open();
+                return new Promise((res, rej) => {
+                    const tx = db.transaction(STORE_KEY, 'readonly');
+                    tx.objectStore(STORE_KEY).get(key).onsuccess = (e) => res(e.target.result);
+                    tx.onerror = () => rej();
+                });
+            }
+        };
+
+        const usePersistedState = (key, defaultValue) => {
+            const [state, setState] = useState(defaultValue);
+            const [loaded, setLoaded] = useState(false);
+
+            useEffect(() => {
+                let mounted = true;
+                idb.get(key).then(val => {
+                    if (mounted) {
+                        if (val !== undefined) setState(val);
+                        setLoaded(true);
+                    }
+                }).catch(() => { if (mounted) setLoaded(true); });
+                return () => { mounted = false; };
+            }, [key]);
+
+            useEffect(() => {
+                if (loaded) idb.put(key, state).catch(console.error);
+            }, [key, state, loaded]);
+
+            return [state, setState, loaded];
+        };
+
+        // --- Common Components ---
+
+
+        const QRCode = ({ url }) => <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`} className="w-full h-full object-contain rounded-lg border-2 border-white/20" />;
+
+        const ImageUploader = ({ onUpload, label = "+", aspect = "aspect-square" }) => {
+            const inputRef = useRef(null);
+            const handleFile = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            let w = img.width, h = img.height, MAX = 800;
+                            if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } } else { if (h > MAX) { w *= MAX / h; h = MAX; } }
+                            canvas.width = w; canvas.height = h;
+                            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                            onUpload(canvas.toDataURL('image/jpeg', 0.8));
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            return <div onClick={() => inputRef.current.click()} className={`border border-dashed border-[#333] hover:border-[#D4AF37] rounded-xl ${aspect} flex flex-col items-center justify-center cursor-pointer transition-all bg-[#0A0A0A] group relative overflow-hidden`}><input type="file" ref={inputRef} onChange={handleFile} className="hidden" accept="image/*" /><i data-lucide="plus" className="w-4 h-4 text-zinc-500 mb-2"></i><p className="text-[10px] uppercase text-zinc-500">{label}</p></div>;
+        };
+
+        const RichTextEditor = ({ value, onChange, placeholder }) => {
+            const editorRef = useRef(null); const quillRef = useRef(null); const isInternalChange = useRef(false); const [selectedImg, setSelectedImg] = useState(null);
+            useEffect(() => {
+                if (editorRef.current && !quillRef.current) {
+                    quillRef.current = new Quill(editorRef.current, { theme: 'snow', placeholder: placeholder || 'Write something amazing...', modules: { toolbar: [[{ 'header': [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'], [{ 'list': 'ordered' }, { 'list': 'bullet' }], [{ 'align': [] }], ['link', 'image'], ['clean']] } });
+                    quillRef.current.on('text-change', (delta, oldDelta, source) => { if (source === 'user') { isInternalChange.current = true; onChange(quillRef.current.root.innerHTML); isInternalChange.current = false; } });
+                    quillRef.current.root.addEventListener('click', (e) => { if (e.target && e.target.tagName === 'IMG') { setSelectedImg(e.target); } else { setSelectedImg(null); } });
+                }
+            }, []);
+            useEffect(() => { if (quillRef.current && value !== quillRef.current.root.innerHTML && !isInternalChange.current) { quillRef.current.root.innerHTML = value || ''; } }, [value]);
+            const resizeImg = (size) => { if (selectedImg) { selectedImg.style.width = size; selectedImg.style.display = size === '100%' ? 'block' : 'inline-block'; isInternalChange.current = true; onChange(quillRef.current.root.innerHTML); isInternalChange.current = false; setSelectedImg(null); } };
+            return (
+                <div className="relative"><div ref={editorRef} className="bg-[#111] text-white border border-[#333] rounded-xl overflow-hidden" style={{ minHeight: '200px' }}></div>{selectedImg && (<div className="absolute z-50 bg-black border border-[#D4AF37] rounded-lg p-1 flex gap-1 shadow-2xl" style={{ top: selectedImg.offsetTop + 'px', left: '50%', transform: 'translateX(-50%)' }}><button onClick={() => resizeImg('25%')} className="px-2 py-1 text-[10px] hover:bg-[#D4AF37] hover:text-black">S</button><button onClick={() => resizeImg('50%')} className="px-2 py-1 text-[10px] hover:bg-[#D4AF37] hover:text-black">M</button><button onClick={() => resizeImg('100%')} className="px-2 py-1 text-[10px] hover:bg-[#D4AF37] hover:text-black">Full</button></div>)}<style>{`.ql-toolbar { background: #1a1a1a; border-color: #333 !important; border-top-left-radius: 12px; border-top-right-radius: 12px; } .ql-container { border-color: #333 !important; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; font-family: 'Outfit', sans-serif; font-size: 14px; } .ql-editor { min-height: 200px; } .ql-stroke { stroke: #888 !important; } .ql-fill { fill: #888 !important; } .ql-picker { color: #888 !important; } .ql-picker-options { background-color: #111 !important; border-color: #333 !important; }`}</style></div>
+            );
+        };
+
+        const ImageViewer = ({ images, initialIndex, onClose }) => {
+            const [index, setIndex] = useState(initialIndex || 0);
+            const touchStart = useRef(null);
+            const handleTouchStart = (e) => { touchStart.current = e.touches[0].clientX; };
+            const handleTouchEnd = (e) => {
+                if (!touchStart.current) return;
+                const diff = touchStart.current - e.changedTouches[0].clientX;
+                if (diff > 50) setIndex((index + 1) % images.length);
+                else if (diff < -50) setIndex((index - 1 + images.length) % images.length);
+                touchStart.current = null;
+            };
+            useEffect(() => {
+                const handleKey = (e) => {
+                    if (e.key === 'Escape') onClose();
+                    if (e.key === 'ArrowRight') setIndex((index + 1) % images.length);
+                    if (e.key === 'ArrowLeft') setIndex((index - 1 + images.length) % images.length);
+                };
+                window.addEventListener('keydown', handleKey); return () => window.removeEventListener('keydown', handleKey);
+            }, [index, images.length]);
+
+            if (!images || images.length === 0) return null;
+
+            return (
+                <div className="fixed inset-0 z-[100000] bg-black flex items-center justify-center animation-fade-in" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} onClick={onClose}>
+                    <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="absolute top-8 right-8 text-white hover:text-red-500 z-50 transition-colors"><i data-lucide="x" className="w-10 h-10"></i></button>
+                    <button onClick={(e) => { e.stopPropagation(); setIndex((index - 1 + images.length) % images.length); }} className="absolute left-4 p-4 text-zinc-600 hover:text-white transition-colors hidden md:block z-50"><i data-lucide="chevron-left" className="w-12 h-12"></i></button>
+                    <button onClick={(e) => { e.stopPropagation(); setIndex((index + 1) % images.length); }} className="absolute right-4 p-4 text-zinc-600 hover:text-white transition-colors hidden md:block z-50"><i data-lucide="chevron-right" className="w-12 h-12"></i></button>
+
+                    <div className="relative w-full h-full flex items-center justify-center">
+                        <img src={images[index]} className="w-full h-full object-contain select-none shadow-2xl cursor-pointer" />
+                    </div>
+
+                    <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/50 border border-zinc-800 px-6 py-3 rounded-full backdrop-blur pointer-events-none">
+                        <i data-lucide="move-horizontal" className="w-4 h-4 text-[#D4AF37] animate-pulse"></i>
+                        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Swipe / Drag</span>
+                    </div>
+                    <div className="absolute bottom-12 right-12 text-[#D4AF37] font-black italic text-4xl opacity-50 pointer-events-none">{index + 1} <span className="text-zinc-700 text-2xl">/ {images.length}</span></div>
+                </div>
+            );
+        };
+
+        // --- Feature Components ---
+
+        const Dashboard = ({ config, assets, role }) => {
+            const [slide, setSlide] = useState(0);
+            const slides = (config.dashboardSlides && config.dashboardSlides.length > 0) ? config.dashboardSlides : DEFAULT_SLIDES;
+
+            useEffect(() => { const tm = setInterval(() => setSlide(s => (s + 1) % slides.length), 3000); return () => clearInterval(tm); }, [slides.length]);
+
+            const totalVal = useMemo(() => assets.filter(a => a.status !== 'deleted').reduce((acc, a) => acc + (Number(a.price || 0) * Number(a.stock || 0)), 0), [assets]);
+
+            return (
+                <div className="relative h-full overflow-y-auto no-scrollbar flex flex-col">
+                    <div className="relative h-[55vh] min-h-[500px] w-full overflow-hidden flex-shrink-0">
+                        {slides.map((src, i) => (<img key={i} src={src} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${slide === i ? 'opacity-60' : 'opacity-0'}`} />))}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
+                    </div>
+                    <div className="flex-1 p-12 flex flex-col items-center justify-center text-center bg-black">
+                        <p className="text-zinc-400 text-xl italic font-medium leading-relaxed max-w-4xl mx-auto drop-shadow-lg mb-10">"마스터 키는 당신의 브랜드 자산에 접속하는 유일한 디지털 열쇠입니다.<br />누구도 침범할 수 없는 당신만의 <span className="text-[#D4AF37] text-3xl font-black italic underline drop-shadow-md mx-2">디지털 영토</span>를 경영하십시오."</p>
+                        <div className="inline-flex flex-col items-center p-8 border-t border-[#222]"><span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-4">Total Empire Value</span><span className="text-4xl md:text-6xl font-black text-[#D4AF37]">₩ {totalVal.toLocaleString()}</span></div>
+                    </div>
+                </div>
+            );
+        };
+
+
+        const Modal = ({ children }) => ReactDOM.createPortal(
+            <div className="fixed inset-0 z-[50000] flex items-center justify-center bg-black/90 backdrop-blur-sm animation-fade-in p-4">
+                {children}
+            </div>,
+            document.body
+        );
+
+        const Newsroom = ({ news, setNews, role, onImageClick }) => {
+            const [edit, setEdit] = useState(false);
+            const [expandedId, setExpandedId] = useState(null); // Accordion State
+            const [item, setItem] = useState({ title: '', content: '' });
+
+            const add = () => {
+                if (!item.title) return;
+                if (item.id) {
+                    // Update existing
+                    setNews(prev => prev.map(n => n.id === item.id ? { ...n, ...item } : n));
+                } else {
+                    // Create new
+                    setNews(prev => [{ id: Date.now(), title: item.title, content: item.content, date: new Date().toLocaleDateString() }, ...prev]);
+                }
+                setEdit(false);
+                setItem({ title: '', content: '' });
+                setExpandedId(null);
+            };
+
+            const insertImage = (imgData) => {
+                // imgTag with 100% width style as per previous request
+                const imgTag = `<img src="${imgData}" style="display: block; margin: 20px auto; width: 100%; border-radius: 8px;" />`;
+                setItem(prev => ({ ...prev, content: (prev.content || '') + imgTag }));
+            };
+
+            const removeLastImage = () => {
+                setItem(prev => {
+                    const content = prev.content || '';
+                    const lastImgIndex = content.lastIndexOf('<img');
+                    if (lastImgIndex !== -1) {
+                        return { ...prev, content: content.substring(0, lastImgIndex) };
+                    }
+                    return prev;
+                });
+            };
+
+            const toggleExpand = (id) => {
+                setExpandedId(prev => {
+                    const next = prev === id ? null : id;
+                    if (next) {
+                        setTimeout(() => {
+                            const el = document.getElementById(`news-${next}`);
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 100);
+                    }
+                    return next;
+                });
+            };
+
+            const handleEditClick = (e, n) => {
+                e.stopPropagation();
+                setItem(n);
+                setEdit(true);
+            };
+
+            const handleDelete = (e, id) => {
+                e.stopPropagation();
+                if (confirm('Delete directive permanently?')) {
+                    setNews(prev => prev.filter(x => x.id !== id));
+                    if (expandedId === id) setExpandedId(null);
+                }
+            };
+
+            return (
+                <div className="p-12">
+                    <div className="flex justify-between items-end mb-12">
+                        <div>
+                            <h2 className="text-5xl font-black italic uppercase text-white tracking-tighter mb-2">Intelligence Room</h2>
+                            <span className="text-zinc-500 font-bold tracking-[0.3em] text-[10px] uppercase">Global Directive Center</span>
+                        </div>
+                        {role === 'admin' && <button onClick={() => { setItem({ title: '', content: '' }); setEdit(true); }} className="px-6 py-2 border border-[#D4AF37] text-[#D4AF37] rounded-full hover:bg-[#D4AF37] hover:text-black uppercase font-bold text-xs tracking-widest transition-all">+ Write Directive</button>}
+                    </div>
+
+                    <div className="flex flex-col border-t border-[#222]">
+                        {news.length === 0 ? <div className="text-zinc-600 font-bold uppercase tracking-widest text-center py-20">No Directives Published</div> :
+                            news.map(n => (
+                                <div key={n.id} className="border-b border-[#222] transition-colors hover:bg-[#0A0A0A]">
+                                    {/* List Item Header */}
+                                    <div
+                                        id={`news-${n.id}`}
+                                        className="py-6 px-4 flex justify-between items-center cursor-pointer group"
+                                        onClick={() => toggleExpand(n.id)}
+                                    >
+                                        <div className="flex-1 pr-8">
+                                            <h3 className={`text-2xl font-bold transition-colors ${expandedId === n.id ? 'text-[#D4AF37]' : 'text-white group-hover:text-zinc-300'}`}>
+                                                {n.title}
+                                            </h3>
+                                        </div>
+                                        <div className="flex items-center gap-6">
+                                            <span className="text-xs text-zinc-500 font-mono hidden md:block">{n.date}</span>
+                                            <i data-lucide={expandedId === n.id ? "chevron-up" : "chevron-down"} className={`w-5 h-5 text-zinc-600 transition-transform ${expandedId === n.id ? 'rotate-180' : ''}`}></i>
+
+                                            {/* Admin Controls on List Item */}
+                                            {role === 'admin' && (
+                                                <div className="flex gap-2 ml-4 border-l border-[#222] pl-6">
+                                                    <button onClick={(e) => handleEditClick(e, n)} className="p-2 hover:text-[#D4AF37] text-zinc-600 transition-colors" title="Edit"><i data-lucide="pencil" className="w-4 h-4"></i></button>
+                                                    <button onClick={(e) => handleDelete(e, n.id)} className="p-2 hover:text-red-500 text-zinc-600 transition-colors" title="Delete"><i data-lucide="trash-2" className="w-4 h-4"></i></button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Expanded Content (Reading Window) */}
+                                    {expandedId === n.id && (
+                                        <div className="px-8 pb-10 animation-fade-in bg-[#0A0A0A] border-t border-[#222]/50">
+                                            <div className="max-w-4xl mx-auto py-8">
+                                                <div className="text-zinc-300 leading-loose text-lg ql-editor" dangerouslySetInnerHTML={{ __html: n.content }}></div>
+
+                                                <div className="mt-12 text-center border-t border-[#222] pt-8">
+                                                    <button onClick={() => toggleExpand(n.id)} className="px-8 py-3 bg-[#111] border border-[#333] rounded-full text-zinc-400 hover:text-white hover:border-[#D4AF37] hover:bg-black transition-all uppercase tracking-widest text-xs font-bold flex items-center gap-2 mx-auto">
+                                                        <i data-lucide="chevron-up" className="w-4 h-4"></i> Close Directive
+                                                    </button>
+                                                </div>
+
+                                                {/* Admin Controls Inside View (Optional Convenience) */}
+                                                {role === 'admin' && (
+                                                    <div className="mt-8 flex justify-end gap-4">
+                                                        <span className="text-xs text-zinc-600 uppercase tracking-widest self-center">Admin Actions</span>
+                                                        <button onClick={(e) => handleEditClick(e, n)} className="px-4 py-2 border border-[#333] rounded text-xs text-zinc-400 hover:text-white hover:border-[#D4AF37] uppercase tracking-wider transition-all">Edit Directive</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                    </div>
+
+                    {/* Edit Modal (Admin Only - Reused) */}
+                    {edit && (
+                        <Modal>
+                            <div className="bg-[#000] p-10 rounded-[2rem] w-full max-w-3xl border border-[#222] relative shadow-2xl h-[90vh] flex flex-col">
+                                <button onClick={() => setEdit(false)} className="absolute top-8 right-8 text-zinc-600 hover:text-white transition-colors z-50"><i data-lucide="x" className="w-6 h-6"></i></button>
+
+                                <h3 className="text-[#D4AF37] font-black text-xs tracking-widest uppercase mb-6 flex-shrink-0">Draft Directive</h3>
+
+                                <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pr-2">
+                                    <div>
+                                        <input className="w-full bg-[#050505] border border-[#222] rounded-xl px-6 py-4 text-xl font-bold text-white outline-none focus:border-[#D4AF37] placeholder-zinc-700" placeholder="Title" value={item.title} onChange={e => setItem({ ...item, title: e.target.value })} />
+                                    </div>
+
+                                    <div className="bg-[#050505] rounded-xl overflow-hidden border border-[#222]">
+                                        <RichTextEditor value={item.content} onChange={val => setItem({ ...item, content: val })} placeholder="Content..." />
+                                    </div>
+
+                                    <div className="bg-[#050505] rounded-xl border border-[#222] p-6">
+                                        <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">Sub Images (Append to Content)</h4>
+                                        <div className="grid grid-cols-4 gap-4">
+                                            <div className="h-24"><ImageUploader onUpload={insertImage} label="Insert Image" aspect="h-full" /></div>
+                                            <button onClick={removeLastImage} className="h-24 border border-red-900 bg-red-900/20 rounded-xl flex flex-col items-center justify-center text-red-500 hover:bg-red-900/40 transition-all">
+                                                <i data-lucide="undo-2" className="w-6 h-6 mb-2"></i>
+                                                <span className="text-[9px] font-bold uppercase tracking-widest">Undo Image</span>
+                                            </button>
+                                        </div>
+                                        <p className="text-[9px] text-zinc-600 mt-2 italic">Uploaded images will be automatically appended to the text editor. You can resize them by clicking on the image in the editor.</p>
+                                    </div>
+                                </div>
+
+                                <button onClick={add} className="w-full py-5 bg-[#D4AF37] text-black font-black rounded-xl uppercase tracking-widest hover:bg-white transition-all shadow-[0_4px_20px_rgba(212,175,55,0.2)] mt-6 flex-shrink-0">Publish</button>
+                            </div>
+                        </Modal>
+                    )}
+                </div>
+            );
+        };
+
+        const Gallery = ({ gallery, setGallery, role }) => {
+            const [activeCategory, setActiveCategory] = useState(null); // Index of open category
+
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [activeCategory, gallery]);
+
+            const handleUpload = (img, catIdx) => {
+                const newG = [...gallery];
+                if (!newG[catIdx].images) newG[catIdx].images = [];
+                newG[catIdx].images.push(img);
+                setGallery(newG);
+            };
+
+            const handleDelete = (catIdx, imgIdx) => {
+                if (role !== 'admin' || !confirm("Remove this image?")) return;
+                const newG = [...gallery];
+                newG[catIdx].images.splice(imgIdx, 1);
+                setGallery(newG);
+            };
+
+            // If a category is open, show Sub-Gallery View
+            if (activeCategory !== null) {
+                const cat = gallery[activeCategory];
+                return (
+                    <div className="p-12 h-screen overflow-hidden flex flex-col animation-fade-in bg-[#050505] relative z-[50]">
+                        <div className="flex justify-between items-center mb-8">
+                            <div>
+                                <h2 className="text-4xl font-black italic uppercase text-white tracking-tighter mb-1 flex items-center gap-4">
+                                    <button onClick={() => setActiveCategory(null)} className="text-zinc-600 hover:text-[#D4AF37] transition-colors"><i data-lucide="arrow-left" className="w-8 h-8"></i></button>
+                                    {cat.title}
+                                </h2>
+                                <p className="text-zinc-500 font-bold tracking-[0.3em] text-[10px] uppercase pl-12">{cat.images.length} Visuals Archived</p>
+                            </div>
+                            {role === 'admin' && (
+                                <div className="h-12 flex items-center">
+                                    <ImageUploader onUpload={(d) => handleUpload(d, activeCategory)} label="+ Add Visual" aspect="auto" />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto no-scrollbar pb-20">
+                            <div className="grid grid-cols-5 gap-4 content-start">
+                                {cat.images.map((src, i) => (
+                                    <div key={i} className="relative group bg-[#0A0A0A] border border-[#222] hover:border-[#D4AF37] transition-all rounded-xl overflow-hidden cursor-pointer shadow-lg aspect-[3/4]" style={{ aspectRatio: '3/4' }}>
+                                        <img src={src} className="w-full h-full object-cover hover:scale-110 transition-transform duration-700" onClick={() => setGallery({ view: true, index: i, images: cat.images })} />
+                                        {role === 'admin' && (
+                                            <button onClick={(e) => { e.stopPropagation(); handleDelete(activeCategory, i); }} className="absolute top-2 right-2 p-2 bg-black/50 text-white/70 hover:text-red-500 hover:bg-black rounded-full backdrop-blur-sm transition-all shadow-lg" title="Delete Image">
+                                                <i data-lucide="trash-2" className="w-4 h-4"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                {cat.images.length === 0 && <div className="col-span-full py-20 text-center text-zinc-600 font-bold uppercase tracking-widest">Collection Empty</div>}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Default Grid View (Covers)
+            return (
+                <div className="p-12 h-screen overflow-hidden flex flex-col relative w-full">
+                    <div className="flex justify-between items-end mb-8 flex-shrink-0">
+                        <div>
+                            <h2 className="text-5xl font-black italic uppercase text-white tracking-tighter mb-1">Empire Gallery</h2>
+                            <p className="text-zinc-500 font-bold tracking-[0.3em] text-[10px] uppercase">Visual Merchandising Collections</p>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto no-scrollbar pb-40">
+                        <div className="grid grid-cols-4 gap-4">
+                            {gallery.map((cat, i) => (
+                                <div key={i} className="relative group bg-[#0A0A0A] border border-[#222] hover:border-[#D4AF37] transition-all rounded-xl overflow-hidden cursor-pointer shadow-lg hover:shadow-[#D4AF37]/20" style={{ aspectRatio: '3/4' }} onClick={() => setActiveCategory(i)}>
+                                    {cat.images && cat.images.length > 0 ? (
+                                        <>
+                                            <img src={cat.images[0]} className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110 filter brightness-75 group-hover:brightness-100" />
+                                            <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+                                            <div className="absolute top-4 right-4 bg-black/60 backdrop-blur px-3 py-1 rounded-full border border-white/10">
+                                                <span className="text-[10px] font-bold text-white flex items-center gap-1"><i data-lucide="layers" className="w-3 h-3"></i> {cat.images.length}</span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center text-zinc-700 gap-2">
+                                            <i data-lucide="folder-open" className="w-12 h-12 opacity-50"></i>
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">Empty</span>
+                                        </div>
+                                    )}
+                                    <div className="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black/90 to-transparent">
+                                        <h3 className="text-xl font-black italic text-white uppercase tracking-tighter group-hover:text-[#D4AF37] transition-colors">{cat.title || `Collection ${i + 1}`}</h3>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const OrderModal = ({ cart, onClose, onRemove, onCopy, onDownload, onUpdateQuantity }) => {
+            const total = cart.reduce((sum, item) => sum + (Number(item.price) * (item.quantity || 1)), 0);
+            return (
+                <Modal>
+                    <div className="bg-[#050505] w-full max-w-2xl border border-[#222] rounded-3xl overflow-hidden relative shadow-2xl flex flex-col max-h-[90vh]">
+                        <div className="p-8 border-b border-[#222] flex justify-between items-center bg-[#0A0A0A]">
+                            <div>
+                                <h3 className="text-[#D4AF37] font-black italic uppercase text-2xl tracking-tighter">Purchase List</h3>
+                                <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.3em]">{cart.length} Items Selected</p>
+                            </div>
+                            <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors"><i data-lucide="x" className="w-6 h-6"></i></button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-8 space-y-4">
+                            {cart.length === 0 ? (
+                                <div className="text-center py-20 text-zinc-600 font-bold uppercase tracking-widest">Your list is empty.</div>
+                            ) : cart.map((item, idx) => (
+                                <div key={item.id} className="flex gap-4 items-center bg-[#0A0A0A] p-4 rounded-xl border border-[#222]">
+                                    <div className="w-20 h-20 bg-[#111] rounded-lg overflow-hidden flex-shrink-0 border border-[#333]">
+                                        {(item.images && item.images[0]) && <img src={item.images[0]} className="w-full h-full object-cover" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <h4 className="text-white font-bold truncate pr-4">{item.name}</h4>
+                                            <button onClick={() => onRemove(item.id)} className="text-zinc-600 hover:text-red-500"><i data-lucide="x" className="w-4 h-4"></i></button>
+                                        </div>
+                                        <p className="text-xs text-[#D4AF37] mb-2">{item.brand}</p>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-zinc-400 font-mono text-sm">₩ {Number(item.price).toLocaleString()}</p>
+                                            <div className="flex items-center gap-3 bg-[#111] rounded-full px-3 py-1 border border-[#333]">
+                                                <button onClick={() => onUpdateQuantity(item.id, -1)} className="text-zinc-400 hover:text-white"><i data-lucide="minus" className="w-3 h-3"></i></button>
+                                                <span className="text-xs font-bold w-4 text-center">{item.quantity || 1}</span>
+                                                <button onClick={() => onUpdateQuantity(item.id, 1)} className="text-zinc-400 hover:text-white"><i data-lucide="plus" className="w-3 h-3"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="p-8 bg-[#0A0A0A] border-t border-[#222]">
+                            <div className="flex justify-between items-end mb-6">
+                                <span className="text-zinc-500 font-bold uppercase tracking-widest text-xs">Total Estimation</span>
+                                <span className="text-4xl font-black text-[#D4AF37] italic">₩ {total.toLocaleString()}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button onClick={onCopy} disabled={cart.length === 0} className="py-4 bg-[#D4AF37] text-black font-black rounded-xl uppercase tracking-widest hover:bg-white transition-all shadow-[0_4px_20px_rgba(212,175,55,0.2)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                                    <i data-lucide="copy" className="w-4 h-4"></i> Messenger Copy
+                                </button>
+                                <button onClick={onDownload} disabled={cart.length === 0} className="py-4 border border-[#333] bg-[#111] text-white font-black rounded-xl uppercase tracking-widest hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                                    <i data-lucide="download" className="w-4 h-4"></i> Save Order Slip
+                                </button>
+                            </div>
+                            <p className="text-center text-[10px] text-zinc-600 mt-4 font-mono">* Copy for KakaoTalk / Save as File</p>
+                        </div>
+                    </div>
+                </Modal>
+            );
+        };
+
+        const ProductDetailModal = ({ asset, onClose, onEdit, onDelete, role, onImageClick, onAddToOrder }) => {
+            if (!asset) return null;
+            const images = asset.images || [];
+
+            return (
+                <div className="fixed inset-0 z-[9000] bg-black overflow-y-auto no-scrollbar animation-fade-in relative group/modal">
+                    {/* Floating Controls */}
+                    <div className="fixed top-6 right-6 z-[9010] flex flex-col gap-4 pointer-events-auto">
+                        <button onClick={onClose} className="w-14 h-14 rounded-full bg-black/50 backdrop-blur-md text-white border border-white/20 hover:bg-[#D4AF37] hover:text-black hover:border-[#D4AF37] transition-all flex items-center justify-center shadow-2xl group"><i data-lucide="x" className="w-6 h-6 group-hover:rotate-90 transition-transform"></i></button>
+                        {role === 'admin' && (
+                            <>
+                                <button onClick={() => onEdit(asset.id)} className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md text-white/70 border border-white/10 hover:bg-white hover:text-black transition-all flex items-center justify-center" title="Edit Product"><i data-lucide="pencil" className="w-5 h-5"></i></button>
+                                <button onClick={() => onDelete(asset.id)} className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md text-white/70 border border-white/10 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all flex items-center justify-center" title="Delete Product"><i data-lucide="trash-2" className="w-5 h-5"></i></button>
+                            </>
+                        )}
+                    </div>
+
+                    {/* 1. HERO SECTION (Full Screen) */}
+                    <div className="w-full h-screen relative flex items-end justify-start overflow-hidden group/hero">
+                        {images[0] ? (
+                            <img
+                                src={images[0]}
+                                className="absolute inset-0 w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-[2s] ease-out will-change-transform"
+                                onClick={() => onImageClick && onImageClick(0)}
+                            />
+                        ) : <div className="absolute inset-0 flex items-center justify-center bg-[#111] text-zinc-700 font-black text-6xl uppercase tracking-tighter">No Visual</div>}
+
+                        {/* Gradient Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none"></div>
+
+                        {/* Hero Content */}
+                        <div className="relative z-10 p-10 md:p-20 w-full max-w-7xl mx-auto pointer-events-none">
+                            <div className="animate-slide-up">
+                                <h3 className="text-[#D4AF37] font-black uppercase tracking-[0.4em] text-sm md:text-xl mb-4 drop-shadow-lg">{asset.brand}</h3>
+                                <h1 className="text-3xl md:text-5xl font-black italic text-white uppercase tracking-tighter leading-[0.85] drop-shadow-2xl mb-8">{asset.name.split(' ').map((word, i) => <span key={i} className="block">{word}</span>)}</h1>
+                                <div className="flex items-center gap-6">
+                                    <div className="px-6 py-3 bg-[#D4AF37] text-black font-black uppercase tracking-widest text-xs rounded-full shadow-[0_0_30px_rgba(212,175,55,0.4)]">
+                                        {asset.category}
+                                    </div>
+                                    <span className="text-3xl md:text-4xl text-white font-thin tracking-tighter">₩ {Number(asset.price).toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Zoom Hint */}
+                        <div className="absolute bottom-10 right-10 flex items-center gap-6 z-30">
+                            {/* Order Button */}
+                            <button
+                                onClick={() => onAddToOrder && onAddToOrder(asset)}
+                                className="px-8 py-4 bg-[#D4AF37] text-black font-black uppercase tracking-widest text-sm rounded-full shadow-[0_0_30px_rgba(212,175,55,0.4)] hover:bg-white hover:scale-105 transition-all flex items-center gap-3"
+                            >
+                                <i data-lucide="shopping-bag" className="w-5 h-5"></i>
+                                Request Order
+                            </button>
+
+                            <div className="flex items-center gap-3 opacity-50 group-hover/hero:opacity-100 transition-opacity pointer-events-none">
+                                <span className="text-xs font-bold text-white uppercase tracking-widest">Click to Zoom</span>
+                                <i data-lucide="maximize-2" className="w-5 h-5 text-[#D4AF37]"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 2. DETAILS & CONTEXT */}
+                    <div className="bg-black relative z-20">
+                        <div className="max-w-5xl mx-auto py-32 px-8">
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-16 items-start">
+                                {/* Description */}
+                                <div className="md:col-span-8">
+                                    <h4 className="text-[#333] font-black uppercase tracking-widest text-sm mb-8 border-b border-[#222] pb-4">Story & Details</h4>
+                                    <div className="prose prose-invert prose-xl max-w-none font-serif text-zinc-300 leading-loose">
+                                        <div dangerouslySetInnerHTML={{ __html: asset.description || asset.content }}></div>
+                                    </div>
+                                </div>
+
+                                {/* Spec Data */}
+                                <div className="md:col-span-4 space-y-8 sticky top-32">
+                                    <div className="bg-[#111] p-8 rounded-2xl border border-[#222]">
+                                        <div className="mb-6">
+                                            <span className="block text-[#444] font-bold uppercase text-[10px] tracking-widest mb-2">Item ID</span>
+                                            <span className="font-mono text-zinc-500 text-sm break-all">{asset.id}</span>
+                                        </div>
+                                        <div className="mb-6">
+                                            <span className="block text-[#444] font-bold uppercase text-[10px] tracking-widest mb-2">Inventory</span>
+                                            <span className="text-2xl text-white font-bold">{asset.stock} <span className="text-sm text-zinc-600 font-normal">EA</span></span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[#444] font-bold uppercase text-[10px] tracking-widest mb-2">Cost Status</span>
+                                            <div className="w-full bg-[#222] h-1 rounded-full overflow-hidden">
+                                                <div className="bg-[#D4AF37] h-full" style={{ width: '60%' }}></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3. GALLERY GRID (Sub Images) - Masonry Style */}
+                        {images.length > 1 && (
+                            <div className="w-full bg-[#050505] py-32 border-t border-[#111]">
+                                <div className="max-w-[1920px] mx-auto px-4 md:px-0">
+                                    <div className="text-center mb-16">
+                                        <h3 className="text-white font-black uppercase text-2xl tracking-widest">Visual Detail</h3>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1">
+                                        {images.slice(1).map((img, i) => (
+                                            <div key={i} className="aspect-[4/5] relative group cursor-pointer overflow-hidden bg-[#111]" onClick={() => onImageClick && onImageClick(i + 1)}>
+                                                <img src={img} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 filter grayscale group-hover:grayscale-0" />
+                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <i data-lucide="plus" className="w-8 h-8 text-white"></i>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="py-20 text-center bg-black">
+                            <div className="w-2 h-20 bg-gradient-to-b from-[#D4AF37] to-transparent mx-auto opacity-50"></div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        const AssetLibrary = ({ assets, onDelete, onEdit, config, role, onAddToOrder, onImageClick }) => {
+            const [search, setSearch] = useState("");
+            const [filter, setFilter] = useState("ALL");
+            const [viewMode, setViewMode] = useState("brand"); // default to brand for A-Z management
+            const [selectedAsset, setSelectedAsset] = useState(null);
+            const [collapsed, setCollapsed] = useState({});
+
+            const toggleCollapse = (key) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+
+            // 1. Get Unique Categories from Data
+            const availableCategories = useMemo(() => {
+                const cats = new Set(assets.map(a => a.category || 'Uncategorized'));
+                return ['ALL', ...Array.from(cats).sort()];
+            }, [assets]);
+
+            // 2. Filter (Exact Match)
+            const filtered = assets.filter(a => {
+                const matchesFilter = filter === 'ALL' || a.category === filter;
+                const matchesSearch = a.name.toLowerCase().includes(search.toLowerCase()) || a.brand.toLowerCase().includes(search.toLowerCase());
+                return matchesFilter && matchesSearch && a.status === 'active';
+            });
+
+            // 3. Grouping
+            let groups = {};
+            if (viewMode === 'category') {
+                filtered.forEach(a => { const k = a.category || 'Uncategorized'; if (!groups[k]) groups[k] = []; groups[k].push(a); });
+            } else {
+                // Brand A-Z
+                filtered.forEach(a => { const k = a.brand || 'No Brand'; if (!groups[k]) groups[k] = []; groups[k].push(a); });
+            }
+
+            const keys = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+
+            const handleDelete = (id) => { if (confirm("삭제하시겠습니까?")) { onDelete(id); setSelectedAsset(null); } };
+
+            return (
+                <div className="p-8 lg:p-12 pb-40">
+                    <div className="flex flex-col xl:flex-row justify-between items-end gap-8 mb-12 sticky top-0 bg-[#050505]/95 backdrop-blur z-[50] py-4 border-b border-[#222]">
+                        <div className="w-full xl:w-auto">
+                            <h2 className="text-4xl font-black italic uppercase text-[#D4AF37] mb-2 tracking-tighter cursor-pointer" onClick={() => setViewMode(prev => prev === 'category' ? 'brand' : 'category')}>
+                                Asset Library <span className="text-sm not-italic font-normal text-zinc-500 align-middle ml-2 border border-[#333] rounded-full px-3 py-1 hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all">By {viewMode}</span>
+                            </h2>
+                            <p className="text-zinc-500 font-bold tracking-[0.2em] text-[10px] uppercase">Total {filtered.length} Assets / {keys.length} Groups</p>
+                        </div>
+
+                        <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
+                            <div className="relative group">
+                                <i data-lucide="search" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-hover:text-[#D4AF37] transition-colors"></i>
+                                <input className="bg-[#111] border border-[#333] pl-12 pr-6 py-3 rounded-full text-sm font-bold text-white w-full md:w-64 focus:border-[#D4AF37] outline-none transition-all placeholder-zinc-600 uppercase tracking-wider" placeholder="Search Assets..." value={search} onChange={e => setSearch(e.target.value)} />
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar max-w-[500px]">
+                                {availableCategories.map(cat => (
+                                    <button key={cat} onClick={() => setFilter(cat)} className={`px-5 py-3 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${filter === cat ? 'bg-[#D4AF37] text-black shadow-[0_0_20px_rgba(212,175,55,0.4)]' : 'bg-[#111] text-zinc-500 hover:text-white border border-[#222]'}`}>{cat}</button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-16">
+                        {keys.map(key => (
+                            <div key={key}>
+                                <div onClick={() => toggleCollapse(key)} className="cursor-pointer flex items-center gap-4 mb-6 group select-none">
+                                    <h3 className="text-2xl font-black italic text-zinc-700 uppercase tracking-tighter group-hover:text-white transition-colors">{key} <span className="text-sm not-italic font-normal text-zinc-800 ml-2 align-middle border border-[#222] px-2 rounded-full">{groups[key].length}</span></h3>
+                                    <div className="w-full h-[1px] bg-[#222] group-hover:bg-[#333] transition-colors flex-1"></div>
+                                    <i data-lucide="chevron-down" className={`w-5 h-5 text-zinc-700 group-hover:text-white transition-all ${collapsed[key] ? '' : 'rotate-180'}`}></i>
+                                </div>
+
+                                {!collapsed[key] && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-x-8 gap-y-12 animation-fade-in">
+                                        {groups[key].map(asset => (
+                                            <div key={asset.id} className="group relative">
+                                                <div className="aspect-[3/4] overflow-hidden bg-[#111] mb-6 relative cursor-pointer" onClick={() => setSelectedAsset(asset)}>
+                                                    {(asset.images && asset.images[0]) ? <img src={asset.images[0]} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-105" /> : <div className="w-full h-full flex items-center justify-center text-zinc-700 font-bold uppercase tracking-widest text-[10px]">No Image</div>}
+                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <span className="px-6 py-2 border border-white/20 rounded-full text-white text-[10px] uppercase font-bold tracking-widest hover:bg-white hover:text-black transition-all">View Details</span>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-white font-bold uppercase tracking-wide truncate mb-1">{asset.name}</h4>
+                                                    <p className="text-zinc-500 text-xs font-mono mb-3">{Number(asset.price).toLocaleString()} KRW</p>
+                                                    {role === 'admin' && (
+                                                        <div className="flex gap-4 border-t border-[#222] pt-3 mt-3">
+                                                            <button onClick={(e) => { e.stopPropagation(); onEdit(asset.id); }} className="text-zinc-600 hover:text-[#D4AF37]"><i data-lucide="pencil" className="w-4 h-4"></i></button>
+                                                            <button onClick={(e) => { e.stopPropagation(); handleDelete(asset.id); }} className="text-zinc-600 hover:text-red-500"><i data-lucide="trash-2" className="w-4 h-4"></i></button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    <ProductDetailModal
+                        asset={selectedAsset}
+                        onClose={() => setSelectedAsset(null)}
+                        onEdit={(id) => { setSelectedAsset(null); onEdit(id); }}
+                        onDelete={(id) => { setSelectedAsset(null); handleDelete(id); }}
+                        role={role}
+                        onAddToOrder={onAddToOrder}
+                        onImageClick={(idx) => onEdit({ view: true, images: selectedAsset.images || [], index: idx })}
+                    />
+                </div >
+            );
+        };
+
+        const ApprovalDesk = ({ assets, setAssets, role }) => {
+            if (role !== 'admin') return <div className="p-12">Access Denied</div>;
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
+            const pending = assets.filter(a => a.status === 'pending');
+            const currentAsset = pending[0];
+            const handleApprove = (id) => { if (confirm("공개 승인하시겠습니까?")) { setAssets(prev => prev.map(a => String(a.id) === String(id) ? { ...a, status: 'active' } : a)); } };
+            const handleReject = (id) => { if (confirm("반려 및 삭제하시겠습니까?")) { setAssets(prev => prev.filter(a => String(a.id) !== String(id))); } };
+
+            return (
+                <div className="min-h-full flex flex-col items-center justify-center p-8 lg:p-12 pb-32">
+                    <div className="w-full max-w-4xl text-center mb-10">
+                        <h2 className="text-4xl font-black italic uppercase mb-2 flex items-center justify-center gap-4 text-[#D4AF37] tracking-tighter">
+                            APPROVAL DESK (FINAL V2)
+                            <span className="bg-[#D4AF37] text-black text-sm font-black px-3 py-1 rounded-full italic">{pending.length} ITEMS LEFT</span>
+                        </h2>
+                        <p className="text-zinc-600 font-bold text-xs">시스템 과부하 방지: 한 번에 하나씩 표시됩니다.</p>
+                    </div>
+                    {!currentAsset ? (
+                        <div className="glass-panel p-20 rounded-3xl text-center border border-[#333] animation-fade-in w-full max-w-2xl">
+                            <div className="w-20 h-20 bg-[#111] rounded-full flex items-center justify-center mx-auto mb-6 border border-[#222]"><i data-lucide="check" className="w-8 h-8 text-[#D4AF37]"></i></div>
+                            <h3 className="text-2xl font-black text-white uppercase mb-2">All Caught Up</h3>
+                            <p className="text-zinc-600 text-sm">승인 대기 중인 항목이 없습니다.</p>
+                        </div>
+                    ) : (
+                        <div className="w-full max-w-5xl bg-[#000] border border-[#D4AF37] rounded-3xl overflow-hidden flex shadow-[0_0_50px_rgba(212,175,55,0.1)] animation-fade-in relative min-h-[600px]">
+                            {/* Left Image Area */}
+                            <div className="w-1/2 bg-[#050505] relative border-r border-[#222]">
+                                <img src={(currentAsset.images && currentAsset.images[0]) ? currentAsset.images[0] : ''} className="w-full h-full object-cover" />
+                                <div className="absolute top-6 left-6 border border-[#D4AF37] text-[#D4AF37] px-4 py-1.5 rounded text-xs font-black uppercase tracking-widest bg-black/80 backdrop-blur">
+                                    {currentAsset.brand}
+                                </div>
+                                <div className="absolute bottom-6 right-6 text-white font-black italic uppercase tracking-widest text-xs opacity-50">{currentAsset.category}</div>
+                            </div>
+
+                            {/* Right Content Area */}
+                            <div className="w-1/2 p-10 flex flex-col bg-[#080808]">
+                                <h3 className="font-black text-5xl text-white mb-8 leading-none tracking-tighter">{currentAsset.name}</h3>
+
+                                {/* Info Cards */}
+                                <div className="grid grid-cols-2 gap-4 mb-8">
+                                    <div className="bg-[#111] border border-[#222] rounded-xl p-6 text-center">
+                                        <p className="text-[9px] text-zinc-500 uppercase font-bold mb-2">Stock Vol</p>
+                                        <p className="text-3xl font-black text-white">{currentAsset.stock || 0}</p>
+                                    </div>
+                                    <div className="bg-[#111] border border-[#222] rounded-xl p-6 text-center">
+                                        <p className="text-[9px] text-[#D4AF37] uppercase font-bold mb-2">Unit Price</p>
+                                        <p className="text-3xl font-black text-[#D4AF37] italic">₩ {Number(currentAsset.price).toLocaleString()}</p>
+                                    </div>
+                                </div>
+
+                                {/* Gallery Scroll */}
+                                <div className="bg-[#111] rounded-xl p-4 border border-[#222] mb-auto overflow-hidden">
+                                    <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                                        {(currentAsset.images || []).map((img, i) => (
+                                            <div key={i} className="w-20 h-20 flex-shrink-0 bg-black border border-[#333] rounded-lg overflow-hidden">
+                                                <img src={img} className="w-full h-full object-cover" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-[#222]">
+                                    <button onClick={() => handleApprove(currentAsset.id)} className="py-4 bg-[#D4AF37] text-black rounded-xl font-bold text-sm uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center gap-2">
+                                        <i data-lucide="check" className="w-4 h-4"></i> 승인하기
+                                    </button>
+                                    <button onClick={() => handleReject(currentAsset.id)} className="py-4 bg-[#1a1a1a] text-red-500 border border-[#333] rounded-xl font-bold text-sm uppercase tracking-widest hover:bg-red-900/20 hover:border-red-900/50 transition-all flex items-center justify-center gap-2">
+                                        <i data-lucide="x" className="w-4 h-4"></i> 반려하기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const ProductRegistration = ({ onSave, onCancel, initialData, role, loginName, assets = [], onQuickEdit, onDelete }) => {
+            const [step, setStep] = useState(1);
+            const defaultForm = { name: '', brand: role === 'brand' ? loginName : '', category: 'Living Room', price: '', buyPrice: '', stock: '', description: '', images: [], status: 'pending' };
+            const [form, setForm] = useState(initialData || defaultForm);
+            useEffect(() => {
+                if (initialData) {
+                    setForm({ ...initialData, images: initialData.images || [] });
+                    setStep(1);
+                } else {
+                    setForm({ ...defaultForm, brand: role === 'brand' ? loginName : '' });
+                }
+            }, [initialData, role, loginName]);
+            const handleImage = (data, idx) => {
+                setForm(prev => {
+                    const newImgs = [...(prev.images || [])];
+                    newImgs[idx] = data;
+                    return { ...prev, images: newImgs };
+                });
+            };
+
+            const handleSubmit = () => {
+                if (!form.name || !form.price || !form.brand) return alert("필수 정보를 입력하세요.");
+                // Admin skips approval -> active immediately
+                const newStatus = role === 'admin' ? 'active' : (form.status === 'active' ? 'active' : 'pending');
+                onSave({ ...form, id: form.id || String(Date.now()), status: newStatus });
+            };
+
+            const isEditing = !!initialData;
+
+            return (
+                <div className="flex-1 flex flex-col bg-[#050505] p-12 min-h-full">
+                    <div className="max-w-7xl mx-auto w-full">
+                        <div className="flex items-center justify-between mb-8">
+                            <h2 className="text-4xl font-black italic uppercase text-[#D4AF37] tracking-tighter">{isEditing ? 'Edit Asset' : 'Registration'}</h2>
+                            <div className="flex gap-3">
+                                {isEditing && <button onClick={() => onDelete(form.id)} className="w-10 h-10 rounded-xl border border-[#333] text-zinc-500 hover:text-red-500 hover:border-red-900 flex items-center justify-center transition-all bg-[#111]"><i data-lucide="trash-2" className="w-4 h-4"></i></button>}
+                                <button onClick={onCancel} className="px-6 py-3 rounded-xl border border-[#333] text-zinc-400 font-bold hover:bg-[#222] uppercase tracking-wider text-xs">Cancel</button>
+                                <button onClick={handleSubmit} className="px-8 py-3 rounded-xl bg-[#D4AF37] text-black font-black hover:bg-white transition-all uppercase tracking-wider text-xs shadow-[0_0_20px_rgba(212,175,55,0.2)]">{isEditing ? 'Update Asset' : 'Register Asset'}</button>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                            {/* Left Column: Visuals */}
+                            <div className="lg:col-span-5 space-y-6">
+                                <div className="border border-[#D4AF37] rounded-2xl p-6 bg-[#0A0A0A] relative">
+                                    <h3 className="text-[#D4AF37] font-black uppercase text-[10px] tracking-widest mb-4">Main Visual</h3>
+                                    <div className="aspect-[3/4] bg-black rounded-xl overflow-hidden border border-[#222] relative group">
+                                        {(form.images || [])[0] ? (
+                                            <div className="w-full h-full relative">
+                                                <img src={form.images[0]} className="w-full h-full object-cover" />
+                                                <button onClick={() => handleImage(null, 0)} className="absolute top-2 right-2 p-2 bg-black/50 rounded-full hover:bg-[#D4AF37] hover:text-black transition-all">
+                                                    <i data-lucide="trash-2" className="w-4 h-4"></i>
+                                                </button>
+                                            </div>
+                                        ) : <ImageUploader onUpload={(d) => handleImage(d, 0)} label="ADD MAIN" aspect="w-full h-full" />}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-zinc-600 font-bold uppercase text-[10px] tracking-widest mb-3">Gallery Images</h3>
+                                    <div className="grid grid-cols-4 gap-3">
+                                        {[1, 2, 3, 4].map(i => (
+                                            <div key={i} className="aspect-square bg-[#0A0A0A] rounded-xl overflow-hidden border border-[#222] relative group">
+                                                {(form.images || [])[i] ? (
+                                                    <div className="w-full h-full relative">
+                                                        <img src={form.images[i]} className="w-full h-full object-cover" />
+                                                        <button onClick={() => handleImage(null, i)} className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-all">
+                                                            <i data-lucide="x" className="w-5 h-5 text-white"></i>
+                                                        </button>
+                                                    </div>
+                                                ) : <ImageUploader onUpload={(d) => handleImage(d, i)} label="+" aspect="w-full h-full" />}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right Column: Form */}
+                            <div className="lg:col-span-7 space-y-8">
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div><label className="text-[10px] text-zinc-600 font-bold uppercase block mb-2">Brand Name</label><input className="admin-input bg-[#111] border-[#222]" value={form.brand} onChange={e => { const v = e.target.value; if (role === 'admin') setForm(prev => ({ ...prev, brand: v })); }} readOnly={role !== 'admin'} /></div>
+                                    <div><label className="text-[10px] text-zinc-600 font-bold uppercase block mb-2">Product Name</label><input className="admin-input" value={form.name} onChange={e => { const v = e.target.value; setForm(prev => ({ ...prev, name: v })); }} /></div>
+                                </div>
+
+                                <div><label className="text-[10px] text-zinc-600 font-bold uppercase block mb-2">Category</label><select className="admin-input cursor-pointer" value={form.category} onChange={e => { const v = e.target.value; setForm(prev => ({ ...prev, category: v })); }}>{['Living Room', 'Bedroom', 'Kitchen & Dining', 'Lighting', 'Bathroom', 'Flooring & Wall', 'Objects & Decor', 'Art & Collection'].map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+
+                                <div className="bg-[#111] p-6 rounded-2xl border border-[#222]">
+                                    <h3 className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest mb-4">Description</h3>
+                                    <RichTextEditor value={form.description} onChange={val => setForm(prev => ({ ...prev, description: val }))} placeholder="Product details..." />
+                                </div>
+
+                                <div className="bg-[#111] p-6 rounded-2xl border border-[#222]">
+                                    <h3 className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest mb-4">Inventory & Pricing</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="text-[9px] text-zinc-600 uppercase font-bold mb-1 block">Buy Price (Cost)</label><input className="admin-input py-3" type="number" value={form.buyPrice} onChange={e => { const v = e.target.value; setForm(prev => ({ ...prev, buyPrice: v })); }} placeholder="0" /></div>
+                                        <div><label className="text-[9px] text-[#D4AF37] uppercase font-bold mb-1 block">Sell Price</label><input className="admin-input py-3 border-[#D4AF37]/30 text-[#D4AF37]" type="number" value={form.price} onChange={e => { const v = e.target.value; setForm(prev => ({ ...prev, price: v })); }} placeholder="0" /></div>
+                                        <div><label className="text-[9px] text-zinc-600 uppercase font-bold mb-1 block">Stock In</label><input className="admin-input py-3" type="number" value={form.stock} onChange={e => { const v = e.target.value; setForm(prev => ({ ...prev, stock: v })); }} placeholder="0" /></div>
+                                        <div><label className="text-[9px] text-zinc-600 uppercase font-bold mb-1 block">Stock Out</label><input className="admin-input py-3" type="number" placeholder="0" /></div>
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t border-[#222] flex justify-between items-center">
+                                        <span className="text-xs font-bold text-zinc-500 uppercase">Total Value (Sales)</span>
+                                        <span className="text-xl font-black text-[#D4AF37]">₩ {(Number(form.price || 0) * Number(form.stock || 0)).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Settings = ({ config, setConfig, role, assets, setAssets, news, setNews, gallery, setGallery, setIsLoading, handleMerge }) => {
+            if (role !== 'admin') return <div className="p-12">Access Denied</div>;
+
+            const exportData = () => {
+                const data = JSON.stringify({ config, assets, news, gallery, version: 'v5' }, null, 2);
+                const blob = new Blob([data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = `LuxeMaster_FullBackup_${Date.now()}.json`; a.click();
+            };
+
+            const restoreBackup = (e) => {
+                const f = e.target.files[0]; e.target.value = null;
+                if (!f) return;
+                if (!confirm("경고: 현재 시스템의 모든 데이터가 백업 파일 내용으로 덮어씌워집니다.\n계속하시겠습니까? (삭제된 데이터 복구 불가)")) return;
+
+                setIsLoading(true);
+                const r = new FileReader();
+                r.onload = (ev) => {
+                    try {
+                        const d = JSON.parse(ev.target.result);
+                        if (d.version !== 'v5' && !confirm("V5 버전 백업 파일이 아닌 것 같습니다. 계속 진행하시겠습니까?")) { setIsLoading(false); return; }
+                        if (d.config) setConfig(d.config);
+                        if (d.assets) setAssets(d.assets);
+                        if (d.news) setNews(d.news);
+                        if (d.gallery) setGallery(d.gallery);
+                        setTimeout(() => alert("시스템 복구가 완료되었습니다."), 500);
+                    } catch (err) { alert("복구 실패: " + err.message); } finally { setIsLoading(false); }
+                };
+                r.readAsText(f);
+            };
+
+            const handleSlide = (img) => {
+                const slides = config.dashboardSlides || DEFAULT_SLIDES;
+                setConfig({ ...config, dashboardSlides: [...slides, img] });
+            };
+            const removeSlide = (idx) => {
+                const slides = [...(config.dashboardSlides || DEFAULT_SLIDES)];
+                slides.splice(idx, 1);
+                setConfig({ ...config, dashboardSlides: slides });
+            };
+
+            const moveBrand = (idx, dir) => {
+                const brands = [...(config.brandAccounts || [])];
+                const targetIdx = idx + dir;
+                if (targetIdx < 0 || targetIdx >= brands.length) return;
+                [brands[idx], brands[targetIdx]] = [brands[targetIdx], brands[idx]];
+                setConfig({ ...config, brandAccounts: brands });
+            };
+
+            return (
+                <div className="p-12 max-w-7xl mx-auto space-y-12 pb-40">
+                    <h2 className="text-4xl font-black italic text-white uppercase mb-8 tracking-tighter bg-[#000] inline-block px-1">System Control</h2>
+
+                    {/* Identity & UI Scale */}
+                    <div className="bg-[#0A0A0A] border border-[#222] rounded-3xl p-10">
+                        <h3 className="text-[#D4AF37] font-black uppercase text-sm tracking-widest mb-8 border-b border-[#222] pb-4 block w-fit">Identity & UI Scale</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                            {/* Logo Area */}
+                            <div className="md:col-span-3">
+                                <div className="aspect-square border border-dashed border-[#333] rounded-xl flex items-center justify-center bg-[#050505] relative group overflow-hidden">
+                                    {config.logo ? (
+                                        <>
+                                            <img src={config.logo} className="w-full h-full object-contain p-4" />
+                                            <button onClick={() => setConfig({ ...config, logo: null })} className="absolute inset-0 bg-black/80 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-bold text-xs uppercase">remove</button>
+                                        </>
+                                    ) : <ImageUploader onUpload={(d) => setConfig({ ...config, logo: d })} label="Brand Identity" aspect="w-full h-full" />}
+                                </div>
+                            </div>
+
+                            {/* Inputs */}
+                            <div className="md:col-span-9 space-y-8">
+                                <div>
+                                    <label className="block text-[10px] font-black text-blue-500 uppercase mb-2 bg-blue-900/20 w-fit px-2 py-0.5 rounded">App Title</label>
+                                    <input className="bg-[#050505] border border-[#222] text-white px-4 py-3 rounded-xl w-full text-sm outline-none focus:border-blue-500 font-bold tracking-wide" value={config.title} onChange={e => setConfig({ ...config, title: e.target.value })} />
+                                </div>
+                                <div>
+                                    <div className="flex justify-between mb-2"><label className="text-[10px] font-black text-blue-500 uppercase bg-blue-900/20 w-fit px-2 py-0.5 rounded">Title Scale ({config.titleSize || 100}%)</label></div>
+                                    <input type="range" min="50" max="150" value={config.titleSize || 100} onChange={e => setConfig({ ...config, titleSize: e.target.value })} className="w-full accent-[#D4AF37] h-1 bg-[#222] rounded-lg appearance-none cursor-pointer" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Dashboard Visuals */}
+                        <div className="mt-8 pt-8 border-t border-[#222]">
+                            <label className="block text-[10px] font-black text-blue-500 uppercase mb-4 bg-blue-900/20 w-fit px-2 py-0.5 rounded">Dashboard Visuals</label>
+                            <div className="grid grid-cols-6 gap-2">
+                                <div className="aspect-video w-full"><ImageUploader onUpload={handleSlide} label="ADD" aspect="w-full h-full" /></div>
+                                {(config.dashboardSlides || DEFAULT_SLIDES).map((slide, i) => (
+                                    <div key={i} className="aspect-video w-full bg-[#000] border border-[#222] rounded-xl overflow-hidden relative group">
+                                        <img src={slide} className="w-full h-full object-cover opacity-50 group-hover:opacity-100 transition-opacity" />
+                                        <button onClick={() => removeSlide(i)} className="absolute top-1 right-1 p-1 bg-black/50 rounded-full hover:bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-all"><i data-lucide="x" className="w-3 h-3"></i></button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Security & Brands */}
+                    <div className="bg-[#0A0A0A] border border-[#222] rounded-3xl p-10">
+                        <h3 className="text-[#D4AF37] font-black uppercase text-sm tracking-widest mb-8 border-b border-[#222] pb-4 block w-fit">Security & Brands</h3>
+
+                        <div className="mb-8">
+                            <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2">Master Admin Key</label>
+                            <input className="bg-[#050505] border border-[#222] text-white px-4 py-4 rounded-xl w-full text-lg font-bold outline-none focus:border-[#D4AF37]" value={config.masterKey} onChange={e => setConfig({ ...config, masterKey: e.target.value })} />
+                        </div>
+
+                        <div className="mb-6">
+                            <div className="flex justify-between items-end mb-4">
+                                <label className="text-[12px] font-black text-white uppercase">Brand Accounts Alignment</label>
+                                <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Use arrows to sort</span>
+                            </div>
+                            <div className="space-y-2">
+                                {(config.brandAccounts || []).map((b, i) => (
+                                    <div key={i} className="flex items-center gap-4 bg-[#050505] border border-[#222] p-4 rounded-xl group hover:border-[#333] transition-all">
+                                        <div className="w-8 h-8 rounded bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 flex items-center justify-center font-black text-xs">{i + 1}</div>
+                                        <div className="flex-1">
+                                            <p className="text-white font-black text-sm uppercase tracking-wide">{b.name}</p>
+                                            <p className="text-zinc-600 text-[10px]">Password: {b.password}</p>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <button onClick={() => moveBrand(i, -1)} className="text-zinc-600 hover:text-[#D4AF37]"><i data-lucide="chevron-up" className="w-4 h-4"></i></button>
+                                            <button onClick={() => moveBrand(i, 1)} className="text-zinc-600 hover:text-[#D4AF37]"><i data-lucide="chevron-down" className="w-4 h-4"></i></button>
+                                        </div>
+                                        <button onClick={() => { const newB = [...config.brandAccounts]; newB.splice(i, 1); setConfig({ ...config, brandAccounts: newB }); }} className="ml-4 text-zinc-700 hover:text-red-500 p-2"><i data-lucide="trash-2" className="w-4 h-4"></i></button>
+                                    </div>
+                                ))}
+                                {(config.brandAccounts || []).length === 0 && <div className="text-center py-6 text-zinc-600 text-xs italic border border-dashed border-[#222] rounded-xl">No Active Brand Accounts</div>}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 pt-6 border-t border-[#222]">
+                            <input id="brandName" placeholder="New Brand Name" className="bg-[#050505] border border-[#222] rounded-xl text-white px-5 outline-none flex-1 text-xs font-bold focus:border-[#D4AF37]" />
+                            <input id="brandPass" placeholder="Password" className="bg-[#050505] border border-[#222] rounded-xl text-white px-5 w-32 outline-none text-xs font-bold focus:border-[#D4AF37]" />
+                            <button onClick={() => {
+                                const n = document.getElementById('brandName').value; const p = document.getElementById('brandPass').value;
+                                if (n && p) { setConfig({ ...config, brandAccounts: [...(config.brandAccounts || []), { name: n, password: p }] }); document.getElementById('brandName').value = ''; document.getElementById('brandPass').value = ''; }
+                            }} className="bg-[#D4AF37] text-black font-black h-12 px-6 rounded-xl uppercase text-xs tracking-wider hover:bg-white transition-all flex flex-col items-center justify-center leading-none gap-1"><i data-lucide="plus" className="w-4 h-4"></i> Add</button>
+                        </div>
+                    </div>
+
+                    {/* Data Backup */}
+                    <div className="bg-[#0A0A0A] border border-[#222] rounded-3xl p-10">
+                        <h3 className="text-[#D4AF37] font-black uppercase text-sm tracking-widest mb-8 border-b border-[#222] pb-4 block w-fit">Data Backup & Merge</h3>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <button onClick={exportData} className="py-4 border border-[#333] bg-[#050505] rounded-xl text-white font-bold text-[10px] uppercase tracking-widest hover:bg-[#D4AF37] hover:border-[#D4AF37] hover:text-black transition-all">Export Full Backup</button>
+                            <div className="relative group">
+                                <input type="file" accept=".json" onChange={restoreBackup} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                <button className="w-full h-full py-4 border border-[#333] bg-[#050505] rounded-xl text-red-500 font-bold text-[10px] uppercase tracking-widest group-hover:bg-red-900/20 group-hover:border-red-900 transition-all">Restore Backup</button>
+                            </div>
+                        </div>
+                        <div className="relative group w-full">
+                            <input type="file" accept=".json" onChange={handleMerge} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                            <button className="w-full h-full py-5 bg-[#D4AF37] text-black font-black rounded-xl text-xs uppercase tracking-widest group-hover:bg-white transition-all shadow-[0_0_30px_rgba(212,175,55,0.1)]">Import Brand Data (Merge)</button>
+                        </div>
+                        <p className="text-center text-[9px] text-zinc-600 mt-6 italic font-bold">Imports products from a Brand App export file. Adds new items to 'Approvals'.</p>
+                    </div>
+                </div>
+            );
+        };
+
+        const Sidebar = ({ active, setActive, role, config, logout, loginName, setLoginName, accessKey, setAccessKey, login }) => {
+            const menu = [
+                { id: 'dashboard', icon: 'layout-dashboard', label: 'Dashboard', r: ['guest', 'admin', 'brand'] },
+                { id: 'news', icon: 'newspaper', label: 'Newsroom', r: ['guest', 'admin', 'brand'] },
+                { id: 'assets', icon: 'bar-chart-2', label: 'Assets', r: ['guest', 'admin', 'brand'] },
+                { id: 'gallery', icon: 'image', label: 'Gallery', r: ['guest', 'admin', 'brand'] },
+                { id: 'register', icon: 'pen-tool', label: 'Registration', r: ['admin', 'brand'] },
+                { id: 'approvals', icon: 'check-circle', label: 'Approvals', r: ['admin'] },
+                { id: 'settings', icon: 'settings', label: 'System', r: ['admin'] },
+            ];
+            return (
+                <aside className="w-[280px] bg-[#000] border-r border-[#1a1a1a] flex flex-col h-full z-50 flex-shrink-0">
+                    <div className="p-10 pb-8">
+                        <h1 className="font-black italic text-2xl mb-1 text-white tracking-tighter leading-none" style={{ fontSize: `${config.titleSize || 100}%` }}>
+                            {(config.title || "LUXE MASTER").split(' ').map((word, i) => (<span key={i} className={i === 0 ? "text-[#D4AF37]" : "text-white"}>{word} </span>))}
+                        </h1>
+                        <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.3em] pl-1">Master Control</p>
+                    </div>
+                    <nav className="flex-1 px-6 space-y-2 overflow-y-auto no-scrollbar">
+                        {menu.filter(m => m.r.includes(role)).map(m => (
+                            <button key={m.id} onClick={() => setActive(m.id)} className={`nav-item w-full group ${active === m.id ? 'active' : ''}`}>
+                                <i data-lucide={m.icon} className={`w-4 h-4 transition-colors ${active === m.id ? 'text-[#D4AF37]' : 'text-zinc-600 group-hover:text-zinc-400'}`}></i>
+                                <span>{m.label}</span>
+                            </button>
+                        ))}
+                    </nav>
+                    <div className="p-6 mt-auto">
+                        <div className="bg-[#0A0A0A] rounded-2xl p-6 border border-[#1a1a1a] flex flex-col items-center gap-4 mb-4 shadow-2xl relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] to-transparent opacity-50"></div>
+                            <div className="w-24 h-24 bg-white p-1 rounded relative z-10"><QRCode url={window.location.href} /></div>
+                            <span className="text-[9px] text-zinc-500 uppercase tracking-[0.2em] font-bold relative z-10 group-hover:text-[#D4AF37] transition-colors">Mobile Access</span>
+                        </div>
+                        {role === 'guest' ? (
+                            <div className="space-y-3">
+                                <input className="w-full bg-[#0A0A0A] border border-[#1a1a1a] rounded-xl px-4 py-3 text-[10px] text-center outline-none focus:border-[#D4AF37] font-bold tracking-wider text-white transition-colors" placeholder="IDENTITY" value={loginName} onChange={e => setLoginName(e.target.value)} />
+                                <input type="password" className="w-full bg-[#0A0A0A] border border-[#1a1a1a] rounded-xl px-4 py-3 text-[10px] text-center outline-none focus:border-[#D4AF37] font-bold tracking-wider text-white transition-colors" placeholder="ACCESS KEY" value={accessKey} onChange={e => setAccessKey(e.target.value)} onKeyDown={login} />
+                            </div>
+                        ) : (<button onClick={logout} className="w-full py-4 rounded-xl border border-[#1a1a1a] bg-[#050505] text-zinc-600 hover:text-white hover:border-[#D4AF37] font-black text-[9px] uppercase tracking-[0.2em] transition-all">LOGOUT</button>)}
+                    </div>
+                </aside>
+            );
+        };
+
+        // --- Main App Logic ---
+        function App() {
+            const [active, setActive] = useState('dashboard');
+            const [role, setRole] = useState('guest');
+            const [loginName, setLoginName] = useState("");
+            const [accessKey, setAccessKey] = useState("");
+            const [isLoading, setIsLoading] = useState(false);
+            const [editingProductId, setEditingProductId] = useState(null);
+
+            const [viewerData, setViewerData] = useState(null);
+
+            // ... (keep state)
+            const [config, setConfig, configLoaded] = usePersistedState('luxe_config_v5', { title: "LUXE MASTER v5.0", logo: null, masterKey: "2026", brandAccounts: [], dashboardSlides: DEFAULT_SLIDES, titleSize: 100 });
+            const [assets, setAssets, assetsLoaded] = usePersistedState('luxe_assets_v5', []);
+            const [gallery, setGallery, galleryLoaded] = usePersistedState('luxe_gallery_v5', [
+                { title: 'Living Room', images: [] }, { title: 'Bedroom', images: [] }, { title: 'Kitchen & Dining', images: [] }, { title: 'Lighting', images: [] },
+                { title: 'Bathroom', images: [] }, { title: 'Flooring', images: [] }, { title: 'Decor', images: [] }, { title: 'Collection', images: [] }
+            ]);
+
+            // Gallery Migration (String -> Object)
+            useEffect(() => {
+                if (galleryLoaded && gallery.length > 0 && typeof gallery[0] === 'string') {
+                    console.log("Migrating Gallery Data...");
+                    const titles = ['Living Room', 'Bedroom', 'Kitchen & Dining', 'Lighting', 'Bathroom', 'Flooring', 'Decor', 'Collection'];
+                    const newGallery = titles.map((t, i) => ({
+                        title: t,
+                        images: gallery[i] ? [gallery[i]] : []
+                    }));
+                    setGallery(newGallery);
+                }
+            }, [galleryLoaded]);
+            const [news, setNews, newsLoaded] = usePersistedState('luxe_news_v5', [{ id: 1, title: "SYSTEM RESET COMPLETED (V5.0)", content: "시스템이 V5.0으로 완전히 초기화되었습니다.\\n기존 데이터는 모두 삭제되었고, 새롭게 시작합니다.", date: "2026.02.06", images: [] }]);
+
+            // Order System State
+            const [cart, setCart] = usePersistedState('luxe_cart_v5', []);
+            const [isOrderOpen, setIsOrderOpen] = useState(false);
+
+            const isReady = configLoaded && assetsLoaded && galleryLoaded && newsLoaded;
+
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [active, assets, role, news, gallery, cart, isOrderOpen]);
+
+            // ... (Handle Login/Logout)
+            const handleLogin = (e) => {
+                if (e.key !== 'Enter') return;
+                if (accessKey === config.masterKey) { setRole('admin'); setLoginName("MASTER"); alert("Access Granted"); }
+                else {
+                    const brand = (config.brandAccounts || []).find(b => b.name === loginName && b.password === accessKey);
+                    if (brand) { setRole('brand'); setLoginName(brand.name); alert(`Welcome ${brand.name}`); }
+                    else alert("Denied");
+                }
+                setAccessKey("");
+            };
+            const handleLogout = () => { setRole('guest'); setLoginName(""); setAccessKey(""); setActive('dashboard'); setEditingProductId(null); };
+
+            // Handle Viewer Triggers from Components
+            const handleStartEdit = (idOrObj) => {
+                // Check if it's a viewer trigger
+                if (idOrObj && idOrObj.view) {
+                    // direct image list (Detail View usage)
+                    if (idOrObj.images && idOrObj.images.length > 0) {
+                        setViewerData({ images: idOrObj.images, index: idOrObj.index || 0 });
+                    } else if (idOrObj.asset) {
+                        // Asset Library Viewer Trigger (Grid usage)
+                        const visibleAssets = idOrObj.allAssets.filter(a => a.images && a.images.length > 0);
+                        const currentIndex = visibleAssets.findIndex(a => a.id === idOrObj.asset.id);
+                        const allImages = visibleAssets.map(a => a.images[0]);
+                        if (allImages.length > 0) {
+                            setViewerData({ images: allImages, index: currentIndex >= 0 ? currentIndex : 0 });
+                        }
+                    }
+                    return; // Stop here! Do not fall through to registration
+                }
+                // Edit Trigger
+                setEditingProductId(idOrObj);
+                setActive('register');
+            };
+
+            // Handle Gallery Viewer
+            const handleGalleryClick = (newGalleryState) => {
+                // If it's a view request with 'images' array already provided (new structure)
+                if (newGalleryState.view && newGalleryState.images) {
+                    setViewerData({ images: newGalleryState.images, index: newGalleryState.index || 0 });
+                    return;
+                }
+
+                // Fallback for old structure (single click on grid, if any)
+                if (newGalleryState.view) {
+                    // This path might be deprecated with new UI but keeping for safety
+                    const validImages = gallery.flatMap(g => g.images || []);
+                    if (validImages.length > 0) setViewerData({ images: validImages, index: 0 });
+                } else {
+                    // Actual State Update
+                    setGallery(newGalleryState);
+                }
+            };
+
+            // ... (Handle Save/Delete/Merge)
+            const handleSaveProduct = (product) => {
+                setAssets(prev => {
+                    const isNew = !prev.find(a => String(a.id) === String(product.id));
+                    setTimeout(() => alert(isNew ? "등록되었습니다!" : "수정되었습니다!"), 0);
+                    if (isNew) return [...prev, product];
+                    return prev.map(a => String(a.id) === String(product.id) ? product : a);
+                });
+                setEditingProductId(null);
+                setActive('assets');
+            };
+
+            const handleDeleteAsset = (id) => {
+                setAssets(prev => prev.map(a => a.id === id ? { ...a, status: 'deleted' } : a));
+                // Also remove from cart if present? Maybe not strictly necessary but good UX
+                setCart(prev => prev.filter(item => item.id !== id));
+            };
+
+            const handleMerge = (e) => {
+                const f = e.target.files[0]; e.target.value = null;
+                if (!f) return;
+                setIsLoading(true);
+                const r = new FileReader();
+                r.onload = (ev) => {
+                    try {
+                        const d = JSON.parse(ev.target.result);
+                        if (!d.assets) throw new Error("Invalid Brand Data");
+                        const newAssets = d.assets.map(a => ({ ...a, status: a.status || 'pending' })); // Preserve status (pending -> approval)
+                        setAssets(prev => {
+                            const existingIds = new Set(prev.map(p => p.id));
+                            const uniqueNew = newAssets.filter(a => !existingIds.has(a.id));
+                            return [...prev, ...uniqueNew];
+                        });
+                        alert(`Merged ${newAssets.length} items successfully.`);
+                    } catch (err) { alert("Merge Failed: " + err.message); } finally { setIsLoading(false); }
+                };
+                r.readAsText(f);
+            };
+
+            // Order System Handlers
+            const addToCart = (asset) => {
+                setCart(prev => {
+                    const existing = prev.find(p => p.id === asset.id);
+                    if (existing) {
+                        return prev.map(p => p.id === asset.id ? { ...p, quantity: (p.quantity || 1) + 1 } : p);
+                    }
+                    return [...prev, { ...asset, quantity: 1 }];
+                });
+                setIsOrderOpen(true);
+            };
+
+            const updateQuantity = (id, delta) => {
+                setCart(prev => prev.map(p => {
+                    if (p.id === id) {
+                        const newQ = (p.quantity || 1) + delta;
+                        return { ...p, quantity: newQ < 1 ? 1 : newQ };
+                    }
+                    return p;
+                }));
+            };
+
+            const removeFromCart = (id) => {
+                setCart(prev => prev.filter(p => p.id !== id));
+            };
+
+            const getOrderText = () => {
+                const lines = cart.map(item => `[${item.brand}] ${item.name} (x${item.quantity || 1}) - ₩${(Number(item.price) * (item.quantity || 1)).toLocaleString()}`);
+                const total = cart.reduce((sum, item) => sum + (Number(item.price) * (item.quantity || 1)), 0);
+                return `[LUXE CONCIERGE ORDER REQUEST]\n\n${lines.join('\n')}\n\nTOTAL ESTIMATION: ₩${total.toLocaleString()}\n\nRequesting confirmation for the above items.`;
+            };
+
+            const copyOrder = () => {
+                navigator.clipboard.writeText(getOrderText()).then(() => alert("주문서가 복사되었습니다! 메신저(카카오톡)에 붙여넣기 하세요."));
+            };
+
+            const downloadOrder = () => {
+                const element = document.createElement("a");
+                const file = new Blob([getOrderText()], { type: 'text/plain' });
+                element.href = URL.createObjectURL(file);
+                element.download = `ORDER_SLIP_${Date.now()}.txt`;
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+            };
+
+            if (!isReady) return <div className="flex items-center justify-center h-screen bg-black text-[#D4AF37] font-black tracking-widest animate-pulse">LOADING SYSTEM...</div>;
+
+            const editingProductData = editingProductId ? assets.find(a => String(a.id) === String(editingProductId)) : null;
+
+            return (
+                <div className="flex h-screen bg-[#050505] overflow-hidden text-zinc-300 font-sans selection:bg-[#D4AF37] selection:text-black">
+                    <Sidebar active={active} setActive={setActive} role={role} config={config} logout={handleLogout} loginName={loginName} setLoginName={setLoginName} accessKey={accessKey} setAccessKey={setAccessKey} login={handleLogin} />
+
+                    <main className="flex-1 overflow-y-auto relative no-scrollbar">
+                        {active === 'dashboard' && <Dashboard role={role} config={config} news={news} gallery={gallery} assets={assets} isReady={isReady} />}
+                        {active === 'news' && <Newsroom news={news} setNews={setNews} role={role} onImageClick={(idx) => setViewerData({ images: [], index: 0 })} />}
+                        {active === 'assets' && <AssetLibrary assets={assets} onDelete={handleDeleteAsset} onEdit={handleStartEdit} config={config} role={role} onAddToOrder={addToCart} onImageClick={(idx) => console.log('Asset lib click', idx)} />}
+                        {active === 'gallery' && <Gallery gallery={gallery} setGallery={handleGalleryClick} role={role} />}
+                        {active === 'register' && <ProductRegistration role={role} loginName={loginName} onSave={handleSaveProduct} initialData={editingProductId ? assets.find(a => a.id === editingProductId) : null} isEditMode={!!editingProductId} onCancel={() => { setEditingProductId(null); setActive('assets'); }} />}
+                        {active === 'approvals' && <ApprovalDesk assets={assets} setAssets={setAssets} role={role} />}
+                        {active === 'settings' && <Settings config={config} setConfig={setConfig} role={role} assets={assets} setAssets={setAssets} news={news} setNews={setNews} gallery={gallery} setGallery={setGallery} setIsLoading={setIsLoading} handleMerge={handleMerge} />}
+
+                        {/* Order FAB */}
+                        <div className="fixed bottom-8 right-8 z-[100]">
+                            <button onClick={() => setIsOrderOpen(true)} className="group relative flex items-center justify-center w-16 h-16 bg-[#D4AF37] rounded-full text-black shadow-[0_0_30px_rgba(212,175,55,0.4)] hover:scale-110 transition-transform">
+                                <i data-lucide="shopping-bag" className="w-6 h-6"></i>
+                                {cart.length > 0 && <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center border-2 border-[#050505]">{cart.length}</span>}
+                            </button>
+                        </div>
+                    </main>
+
+                    {/* Order Modal */}
+                    {isOrderOpen && <OrderModal cart={cart} onClose={() => setIsOrderOpen(false)} onRemove={removeFromCart} onCopy={copyOrder} onDownload={downloadOrder} onUpdateQuantity={updateQuantity} />}
+
+                    {/* Global Viewer */}
+                    {viewerData && (
+                        <div className="fixed inset-0 z-[10000] bg-black animation-fade-in flex items-center justify-center cursor-pointer" onClick={() => setViewerData(null)}>
+                            <button onClick={() => setViewerData(null)} className="absolute top-8 right-8 text-white/50 hover:text-white z-[10010] p-4"><i data-lucide="x" className="w-8 h-8"></i></button>
+                            <img src={viewerData.images[viewerData.index]} className="w-full h-full object-contain select-none" />
+                            {viewerData.images.length > 1 && (
+                                <>
+                                    <button onClick={(e) => { e.stopPropagation(); setViewerData(prev => ({ ...prev, index: (prev.index - 1 + prev.images.length) % prev.images.length })); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-4 text-white hover:text-[#D4AF37] z-[10010]"><i data-lucide="chevron-left" className="w-10 h-10"></i></button>
+                                    <button onClick={(e) => { e.stopPropagation(); setViewerData(prev => ({ ...prev, index: (prev.index + 1) % prev.images.length })); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-4 text-white hover:text-[#D4AF37] z-[10010]"><i data-lucide="chevron-right" className="w-10 h-10"></i></button>
+                                </>
+                            )}
+                            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 text-zinc-500 font-bold uppercase tracking-widest text-xs pointer-events-none">
+                                {viewerData.index + 1} / {viewerData.images.length}
+                            </div>
+                        </div>
+                    )}
+
+                    {isLoading && <div className="fixed inset-0 z-[50000] bg-black/80 flex items-center justify-center text-[#D4AF37] font-black tracking-widest">PROCESSING...</div>}
+                </div>
+            );
+        };
+
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
