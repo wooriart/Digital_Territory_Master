@@ -2,38 +2,65 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LUXE EMPIRE | Digital Territory</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;700&family=Noto+Sans+KR:wght@100;400;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #050505; color: #d4af37; font-family: 'Pretendard', sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; }
-        .header { padding: 50px 20px; text-align: center; border-bottom: 1px solid #d4af37; width: 100%; }
-        h1 { font-size: 2.5rem; letter-spacing: 7px; margin: 0; }
-        .partners { color: #ffffff; font-size: 1rem; margin-top: 15px; opacity: 0.8; }
-        .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 20px; width: 90%; max-width: 500px; }
-        .menu-card { border: 1px solid #d4af37; padding: 20px; border-radius: 10px; text-align: center; background: rgba(212, 175, 55, 0.05); transition: 0.3s; cursor: pointer; }
-        .menu-card:active { background: #d4af37; color: #000; }
-        .menu-card h3 { font-size: 0.9rem; margin: 0; }
-        .footer { margin-top: 30px; padding: 20px; font-size: 0.8rem; color: #666; }
+        :root { --gold: #c5a059; --dark-bg: #050505; --card-bg: #111111; }
+        body { background-color: var(--dark-bg); color: #ffffff; font-family: 'Noto Sans KR', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        
+        /* 로딩 애니메이션 및 헤더 */
+        .header { padding: 80px 20px 40px; text-align: center; background: linear-gradient(to bottom, #1a1a1a, var(--dark-bg)); }
+        .logo { font-family: 'Noto Serif KR', serif; font-size: 2.8rem; font-weight: 700; color: var(--gold); letter-spacing: 12px; margin: 0; text-shadow: 0 4px 15px rgba(197, 160, 89, 0.3); }
+        .sub-title { font-size: 0.85rem; letter-spacing: 4px; margin-top: 15px; color: #888; font-weight: 100; }
+
+        /* 마스터 정보 섹션 */
+        .master-info { padding: 20px; text-align: center; border-top: 1px solid rgba(197, 160, 89, 0.2); border-bottom: 1px solid rgba(197, 160, 89, 0.2); background: rgba(197, 160, 89, 0.03); margin-bottom: 30px; }
+        .master-info strong { color: var(--gold); font-size: 1.1rem; }
+        .master-info span { margin: 0 10px; color: #444; }
+
+        /* 카탈로그 그리드 시스템 */
+        .grid-wrapper { padding: 0 20px 60px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 600px; margin: 0 auto; }
+        .item-card { background: var(--card-bg); border: 1px solid #222; border-radius: 4px; padding: 30px 15px; text-align: center; transition: all 0.4s ease; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; height: 120px; }
+        .item-card::after { content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%; background: var(--gold); opacity: 0; transition: 0.3s; }
+        .item-card:active { background: #1a1a1a; border-color: var(--gold); transform: translateY(-5px); }
+        .item-card:active::after { opacity: 1; }
+        .item-card h3 { font-size: 0.95rem; font-weight: 400; color: #eee; margin: 0; letter-spacing: 1px; line-height: 1.5; }
+        .item-card .num { font-size: 0.7rem; color: var(--gold); margin-bottom: 10px; font-family: serif; display: block; }
+
+        /* 하단 푸터 및 연락처 */
+        .contact-section { padding: 40px 20px; text-align: center; background: #0a0a0a; }
+        .btn-call { display: inline-block; padding: 18px 40px; border: 1px solid var(--gold); color: var(--gold); text-decoration: none; border-radius: 2px; font-size: 0.9rem; letter-spacing: 2px; transition: 0.3s; }
+        .btn-call:active { background: var(--gold); color: #000; }
+        .footer-text { margin-top: 50px; font-size: 0.7rem; color: #444; line-height: 2; letter-spacing: 1px; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>LUXE EMPIRE</h1>
-        <div class="partners">Master: 이하웅 | Partner: 박현순 회장</div>
-    </div>
+    <header class="header">
+        <h1 class="logo">LUXE EMPIRE</h1>
+        <p class="sub-title">HIGH-END INTERIOR ECOSYSTEM</p>
+    </header>
 
-    <div class="grid-container">
-        <div class="menu-card"><h3>가구 인벤토리</h3></div>
-        <div class="menu-card"><h3>수입 제조 공사</h3></div>
-        <div class="menu-card"><h3>명품 브랜드 큐레이션</h3></div>
-        <div class="menu-card"><h3>디지털 자산 관리</h3></div>
-        <div class="menu-card"><h3>바스 엑스포 전시</h3></div>
-        <div class="menu-card"><h3>인테르니 앤 데코</h3></div>
-        <div class="menu-card"><h3>VIP 컨시어지</h3></div>
-        <div class="menu-card"><h3>Luxe ERP 시스템</h3></div>
-    </div>
+    <section class="master-info">
+        <strong>Master 이하웅</strong> <span>|</span> <strong>Partner 박현순 회장</strong>
+    </section>
 
-    <div class="footer">© 2026 LUXE EMPIRE. Digital Territory Master Lee Ha-ung.</div>
+    <main class="grid-wrapper">
+        <div class="item-card"><span class="num">INV 01</span><h3>가구<br>인벤토리</h3></div>
+        <div class="item-card"><span class="num">INV 02</span><h3>수입 제조<br>및 공사</h3></div>
+        <div class="item-card"><span class="num">INV 03</span><h3>바스 엑스포<br>전시관</h3></div>
+        <div class="item-card"><span class="num">INV 04</span><h3>인테르니 앤 데코<br>미디어</h3></div>
+        <div class="item-card"><span class="num">INV 05</span><h3>Luxe ERP<br>시스템</h3></div>
+        <div class="item-card"><span class="num">INV 06</span><h3>디지털 영토<br>마스터 컨설팅</h3></div>
+        <div class="item-card" style="grid-column: span 2; height: 80px;"><span class="num">INV 07</span><h3>VIP 전용 컨시어지</h3></div>
+    </main>
+
+    <section class="contact-section">
+        <a href="tel:010-0000-0000" class="btn-call">MASTER DIRECT LINE</a>
+        <div class="footer-text">
+            본 플랫폼은 마스터 이하웅의 디지털 영토 내 자산을 관리합니다.<br>
+            © 2026 LUXE EMPIRE. ALL RIGHTS RESERVED.
+        </div>
+    </section>
 </body>
 </html>
-
